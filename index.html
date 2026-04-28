@@ -125,6 +125,9 @@
                 <p class="text-gray-500 mt-1">Select activities and behaviors to generate a report.</p>
             </div>
             <div class="flex gap-4" id="header-controls">
+                <button id="change-key-btn" title="Change API Key" class="border-2 border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 focus:border-blue-500 focus:outline-none bg-white font-medium text-gray-700 flex items-center gap-2 transition-colors">
+                    <span>🔑</span> <span class="hidden sm:inline">API Key</span>
+                </button>
                 <select id="language-select" class="border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none bg-white font-medium text-gray-700">
                     <option value="en">English PDFs</option>
                     <option value="es">Spanish PDFs (Español)</option>
@@ -467,6 +470,22 @@
                 notes: document.getElementById('teacher-notes').value || (lang === 'es' ? 'Sin notas adicionales hoy.' : 'No additional notes today.')
             };
         }
+
+        // --- CHANGE API KEY ---
+        document.getElementById('change-key-btn').addEventListener('click', () => {
+            const currentKey = localStorage.getItem("GEMINI_API_KEY") || "";
+            const newKey = window.prompt("Enter your Gemini API Key:", currentKey);
+            
+            if (newKey !== null) { // User didn't click Cancel
+                if (newKey.trim() === "") {
+                    localStorage.removeItem("GEMINI_API_KEY");
+                    showMessage("API Key removed. Will attempt to use default environment key.", "msg-info");
+                } else {
+                    localStorage.setItem("GEMINI_API_KEY", newKey.trim());
+                    showMessage("API Key saved securely in your browser!", "msg-success");
+                }
+            }
+        });
 
         // --- CLEAR FORM ---
         document.getElementById('clear-btn').addEventListener('click', () => {
