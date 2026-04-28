@@ -513,7 +513,7 @@
             
             // Fallback for static hosting (like GitHub Pages) so your key isn't hardcoded
             if (!apiKey || apiKey === "undefined" || apiKey.includes("process.env")) {
-                apiKey = localStorage.getItem("GEMINI_API_KEY");
+                apiKey = localStorage.getItem("GEMINI_API_KEY") || "AIzaSyAor4JO213tts6tqISe994hHhJH1Y0FMj0";
                 if (!apiKey) {
                     apiKey = window.prompt("Please enter your Gemini API Key (stored locally):");
                     if (apiKey) localStorage.setItem("GEMINI_API_KEY", apiKey);
