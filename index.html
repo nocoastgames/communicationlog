@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Communication Log</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .category-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .selection-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            height: 100%;
+            text-align: center;
+        }
+
+        .selection-btn:hover {
+            border-color: #93c5fd;
+            background-color: #f0fdf4;
+        }
+
+        .selection-btn.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-emoji {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+        }
+
+        .btn-text {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        
+        /* Message Box styling */
+        #message-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 50;
+        }
+        .msg-success { background-color: #10b981; }
+        .msg-error { background-color: #ef4444; }
+        .msg-info { background-color: #3b82f6; }
+
+        /* Loader */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        
+        .loader-sm {
+            width: 16px;
+            height: 16px;
+            border-width: 2px;
+            margin-right: 0;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Infographic hidden container */
+        #infographic-container {
+            display: none;
+            width: 800px;
+            margin: 0 auto;
+            background: white;
+        }
+    </style>
+</head>
+<body class="text-gray-800 p-4 md:p-8 max-w-4xl mx-auto relative">
+
+    <div id="app-container">
+        <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-xl shadow-sm category-card">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Daily Communication Log</h1>
+                <p class="text-gray-500 mt-1">Select activities and behaviors to generate a report.</p>
+            </div>
+            <div class="flex gap-4" id="header-controls">
+                <select id="language-select" class="border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none bg-white font-medium text-gray-700">
+                    <option value="en">English PDFs</option>
+                    <option value="es">Spanish PDFs (Español)</option>
+                </select>
+            </div>
+        </div>
+
+    <!-- Student Info -->
+    <div class="category-card">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Student Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
+                <input type="text" id="student-name" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none" placeholder="Enter name">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" id="log-date" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none">
+            </div>
+        </div>
+    </div>
+
+    <!-- Today I Felt... -->
+    <div class="category-card">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I felt...</h2>
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-3" id="felt-container">
+            <!-- Buttons generated by JS -->
+        </div>
+    </div>
+
+    <!-- Today I worked on... -->
+    <div class="category-card">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I worked on...</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="worked-on-container">
+             <!-- Buttons generated by JS -->
+        </div>
+    </div>
+
+    <!-- Today I went to... -->
+    <div class="category-card">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I went to...</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="went-to-container">
+             <!-- Buttons generated by JS -->
+        </div>
+    </div>
+
+    <!-- Today I saw... -->
+    <div class="category-card">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I saw...</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="saw-container">
+             <!-- Buttons generated by JS -->
+        </div>
+    </div>
+    
+    <!-- For lunch I... -->
+    <div class="category-card">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">For lunch, I...</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="lunch-container">
+             <!-- Buttons generated by JS -->
+        </div>
+    </div>
+
+    <!-- Bathroom Report & Needs -->
+    <div class="category-card">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Care & Needs</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+                <h3 class="font-semibold text-gray-700 mb-3">Bathroom</h3>
+                <div class="flex items-center gap-4 mb-3">
+                    <span class="w-16 font-medium text-gray-700">Wet:</span>
+                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('wet', -1)">-</button>
+                    <span id="count-wet" class="w-8 text-center font-bold text-lg">0</span>
+                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('wet', 1)">+</button>
+                </div>
+                <div class="flex items-center gap-4 mb-3">
+                    <span class="w-16 font-medium text-gray-700">BM:</span>
+                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('bm', -1)">-</button>
+                    <span id="count-bm" class="w-8 text-center font-bold text-lg">0</span>
+                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('bm', 1)">+</button>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="w-16 font-medium text-gray-700">Dry:</span>
+                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('dry', -1)">-</button>
+                    <span id="count-dry" class="w-8 text-center font-bold text-lg">0</span>
+                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('dry', 1)">+</button>
+                </div>
+            </div>
+            <div>
+                <h3 class="font-semibold text-gray-700 mb-3">Needs</h3>
+                <div class="grid grid-cols-2 gap-2" id="needs-container">
+                    <!-- Buttons generated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Generation Section -->
+    <div class="category-card bg-blue-50 border border-blue-100">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+            <h2 class="text-xl font-bold text-gray-800">Teacher's Note</h2>
+            
+            <div class="flex items-center gap-2" id="ai-tools-container">
+                <!-- Translation Dropdown & Button -->
+                <div class="flex border border-blue-200 rounded-lg bg-white overflow-hidden shadow-sm">
+                    <select id="translate-lang" class="px-3 py-1.5 text-sm bg-transparent border-none focus:ring-0 text-gray-700 outline-none cursor-pointer hover:bg-gray-50 transition-colors">
+                        <option value="en">🇺🇸 EN</option>
+                        <option value="es">🇪🇸 ES</option>
+                    </select>
+                    <button id="translate-btn" title="Translate Note" class="px-3 py-1.5 text-sm font-medium bg-gray-50 hover:bg-gray-100 text-gray-700 border-l border-blue-200 transition-all">
+                        Translate
+                    </button>
+                </div>
+
+                <!-- Polish Notes Button -->
+                <button id="polish-ai-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center">
+                    <span id="ai-btn-text">✨ Polish Notes</span>
+                </button>
+            </div>
+        </div>
+        
+        <p class="text-sm text-gray-600 mb-3" id="ai-help-text">Select the options above, jot down any extra thoughts, and click <b>✨ Polish Notes</b> to generate an objective summary!</p>
+        <textarea id="teacher-notes" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none min-h-[120px]" placeholder="Type your rough notes here (e.g., 'struggled at recess but did great in math')..."></textarea>
+    </div>
+
+    </div> <!-- End of app-container -->
+
+    <!-- Action Buttons -->
+    <div id="action-buttons" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 mb-12">
+        <button id="clear-btn" class="bg-white border-2 border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-4 px-6 rounded-xl transition-colors shadow-sm flex justify-center items-center gap-2">
+            🗑️ Clear Form
+        </button>
+        <button id="pdf-btn" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2">
+            📄 Standard PDF
+        </button>
+        <button id="infographic-btn" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2">
+            🎨 Generate Infographic
+        </button>
+    </div>
+
+    <!-- Message Box -->
+    <div id="message-box"></div>
+
+    <script>
+        // --- DATA & CONFIGURATION ---
+        // Setup Date
+        document.getElementById('log-date').valueAsDate = new Date();
+
+        const categories = {
+            felt: [
+                { id: 'happy', emoji: '😊', en: 'Happy', es: 'Feliz' },
+                { id: 'sad', emoji: '😢', en: 'Sad', es: 'Triste' },
+                { id: 'tired', emoji: '😴', en: 'Tired', es: 'Cansado(a)' },
+                { id: 'silly', emoji: '🤪', en: 'Silly', es: 'Gracioso(a)' },
+                { id: 'frustrated', emoji: '😖', en: 'Frustrated', es: 'Frustrado(a)' },
+                { id: 'sick', emoji: '🤒', en: 'Sick', es: 'Enfermo(a)' }
+            ],
+            workedOn: [
+                { id: 'reading', emoji: '📚', en: 'Reading', es: 'Lectura' },
+                { id: 'math', emoji: '🔢', en: 'Math', es: 'Matemáticas' },
+                { id: 'writing', emoji: '✍️', en: 'Writing', es: 'Escritura' },
+                { id: 'art', emoji: '🎨', en: 'Art', es: 'Arte' },
+                { id: 'music', emoji: '🎵', en: 'Music', es: 'Música' },
+                { id: 'social', emoji: '🤝', en: 'Social', es: 'Socialización' },
+                { id: 'hygiene', emoji: '🧼', en: 'Hygiene/Self-Care', es: 'Higiene/Cuidado Personal' },
+                { id: 'mobility', emoji: '🚶', en: 'Mobility', es: 'Movilidad' },
+                { id: 'mat_time', emoji: '🧘', en: 'Mat Time', es: 'Tiempo en la Colchoneta' },
+                { id: 'communication', emoji: '💬', en: 'Communication', es: 'Comunicación' },
+                { id: 'technology', emoji: '💻', en: 'Technology', es: 'Tecnología' },
+                { id: 'other', emoji: '📝', en: 'Other', es: 'Otro' }
+            ],
+            wentTo: [
+                { id: 'library', emoji: '📖', en: 'Library', es: 'Biblioteca' },
+                { id: 'gym', emoji: '🏃', en: 'Gym/PE', es: 'Gimnasio/Ed. Física' },
+                { id: 'cafeteria', emoji: '🍱', en: 'Cafeteria', es: 'Cafetería' },
+                { id: 'therapy', emoji: '🧩', en: 'Therapy (OT/PT/Speech)', es: 'Terapia' },
+                { id: 'assembly', emoji: '🎭', en: 'Assembly', es: 'Asamblea' },
+                { id: 'music_class', emoji: '🎵', en: 'Music', es: 'Música' },
+                { id: 'humanities', emoji: '🌍', en: 'Humanities', es: 'Humanidades' },
+                { id: 'nurse_office', emoji: '🏥', en: 'Nurse', es: 'Enfermería' }
+            ],
+            saw: [
+                { id: 'nurse', emoji: '🩺', en: 'Nurse', es: 'Enfermero(a)' },
+                { id: 'ot', emoji: '👐', en: 'OT', es: 'Terapeuta Ocupacional (OT)' },
+                { id: 'pt', emoji: '💪', en: 'PT', es: 'Fisioterapeuta (PT)' },
+                { id: 'speech', emoji: '🗣️', en: 'Speech', es: 'Terapeuta de Habla' }
+            ],
+            lunch: [
+                { id: 'ate_all', emoji: '🍽️', en: 'Ate Everything', es: 'Comió Todo' },
+                { id: 'ate_some', emoji: '🥪', en: 'Ate Some', es: 'Comió Algo' },
+                { id: 'didnt_eat', emoji: '🙅', en: 'Did Not Eat', es: 'No Comió' },
+                { id: 'tried_new', emoji: '🌟', en: 'Tried Something New', es: 'Probó Algo Nuevo' }
+            ],
+            needs: [
+                { id: 'diapers', emoji: '🧻', en: 'Diapers/Pull-ups', es: 'Pañales' },
+                { id: 'wipes', emoji: '🧴', en: 'Wipes', es: 'Toallitas' },
+                { id: 'clothes', emoji: '👕', en: 'Extra Clothes', es: 'Ropa Extra' },
+                { id: 'snack', emoji: '🍎', en: 'Snacks', es: 'Meriendas' }
+            ]
+        };
+
+        const translations = {
+            en: {
+                reportTitle: "Daily Report for",
+                date: "Date",
+                felt: "Today I felt...",
+                workedOn: "Today I worked on...",
+                wentTo: "Today I went to...",
+                saw: "Today I saw...",
+                lunch: "For lunch, I...",
+                bathroom: "Bathroom Report",
+                needs: "Needs",
+                notes: "Teacher's Notes",
+                wet: "Wet",
+                bm: "BM",
+                dry: "Dry",
+                none: "None",
+                thankYou: "Thank you for a great day!",
+                // Infographic specific
+                dayOf: "'s Day!",
+                howIFelt: "HOW I FELT",
+                activities: "ACTIVITIES & PLACES",
+                therapies: "THERAPIES & SPECIALISTS",
+                lunchTitle: "LUNCH",
+                personalCare: "PERSONAL CARE",
+                weNeed: "WE NEED",
+                notesTitle: "TEACHER'S NOTES"
+            },
+            es: {
+                reportTitle: "Reporte Diario de",
+                date: "Fecha",
+                felt: "Hoy me sentí...",
+                workedOn: "Hoy trabajé en...",
+                wentTo: "Hoy fui a...",
+                saw: "Hoy vi a...",
+                lunch: "En el almuerzo...",
+                bathroom: "Reporte de Baño",
+                needs: "Necesidades",
+                notes: "Notas del Maestro(a)",
+                wet: "Mojado",
+                bm: "Evacuación",
+                dry: "Seco",
+                none: "Ninguno",
+                thankYou: "¡Gracias por un gran día!",
+                // Infographic specific
+                dayOf: "¡Día de ",
+                howIFelt: "CÓMO ME SENTÍ",
+                activities: "ACTIVIDADES Y LUGARES",
+                therapies: "TERAPIAS Y ESPECIALISTAS",
+                lunchTitle: "ALMUERZO",
+                personalCare: "CUIDADO PERSONAL",
+                weNeed: "NECESITAMOS",
+                notesTitle: "NOTAS DEL MAESTRO(A)"
+            }
+        };
+
+        // --- UI INITIALIZATION ---
+        function createButtons(containerId, categoryKey, type='multi') {
+            const container = document.getElementById(containerId);
+            categories[categoryKey].forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'selection-btn';
+                btn.dataset.category = categoryKey;
+                btn.dataset.id = item.id;
+                
+                btn.innerHTML = `
+                    <span class="btn-emoji">${item.emoji}</span>
+                    <span class="btn-text">${item.en}</span>
+                `;
+
+                btn.onclick = () => {
+                    if (type === 'single') {
+                        const siblings = container.querySelectorAll('.selection-btn');
+                        siblings.forEach(s => { if(s !== btn) s.classList.remove('selected'); });
+                    }
+                    btn.classList.toggle('selected');
+                };
+
+                container.appendChild(btn);
+            });
+        }
+
+        createButtons('felt-container', 'felt', 'multi');
+        createButtons('worked-on-container', 'workedOn', 'multi');
+        createButtons('went-to-container', 'wentTo', 'multi');
+        createButtons('saw-container', 'saw', 'multi');
+        createButtons('lunch-container', 'lunch', 'single');
+        createButtons('needs-container', 'needs', 'multi');
+
+        // Counters
+        let counters = { wet: 0, bm: 0, dry: 0 };
+        function updateCounter(type, change) {
+            counters[type] = Math.max(0, counters[type] + change);
+            document.getElementById(`count-${type}`).innerText = counters[type];
+        }
+
+        // --- MESSAGING ---
+        function showMessage(text, type = 'msg-info') {
+            const box = document.getElementById('message-box');
+            box.textContent = text;
+            box.className = type;
+            box.style.opacity = '1';
+            setTimeout(() => { box.style.opacity = '0'; }, 4000);
+        }
+
+        // --- HELPER: GET SELECTED DATA ---
+        function getSelectedData() {
+            const lang = document.getElementById('language-select').value;
+            const getName = (btn) => {
+                const cat = btn.dataset.category;
+                const id = btn.dataset.id;
+                const item = categories[cat].find(c => c.id === id);
+                return lang === 'es' ? item.es : item.en;
+            };
+
+            const getItems = (containerId) => {
+                return Array.from(document.getElementById(containerId).querySelectorAll('.selected')).map(btn => ({
+                    emoji: btn.querySelector('.btn-emoji').innerText,
+                    text: getName(btn)
+                }));
+            };
+
+            const rawDate = document.getElementById('log-date').value;
+            let formattedDate = "";
+            if (rawDate) {
+                const d = new Date(rawDate + 'T12:00:00');
+                formattedDate = d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            }
+
+            return {
+                lang: lang,
+                name: document.getElementById('student-name').value || (lang === 'es' ? 'Estudiante' : 'Student'),
+                date: formattedDate,
+                felt: getItems('felt-container'),
+                workedOn: getItems('worked-on-container'),
+                wentTo: getItems('went-to-container'),
+                saw: getItems('saw-container'),
+                lunch: getItems('lunch-container'),
+                needs: getItems('needs-container'),
+                counters: { ...counters },
+                notes: document.getElementById('teacher-notes').value || (lang === 'es' ? 'Sin notas adicionales hoy.' : 'No additional notes today.')
+            };
+        }
+
+        // --- CLEAR FORM ---
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            document.querySelectorAll('.selection-btn').forEach(btn => btn.classList.remove('selected'));
+            counters = { wet: 0, bm: 0, dry: 0 };
+            document.getElementById('count-wet').innerText = '0';
+            document.getElementById('count-bm').innerText = '0';
+            document.getElementById('count-dry').innerText = '0';
+            document.getElementById('teacher-notes').value = '';
+            document.getElementById('student-name').value = '';
+            document.getElementById('log-date').valueAsDate = new Date();
+            showMessage('Form cleared.', 'msg-info');
+        });
+
+        // --- API CALLER (AI Features) ---
+        async function callGeminiAPI(promptText, systemInstruction) {
+            let apiKey = process.env.GEMINI_API_KEY;
+            
+            // Fallback for static hosting (like GitHub Pages) so your key isn't hardcoded
+            if (!apiKey || apiKey === "undefined" || apiKey.includes("process.env")) {
+                apiKey = localStorage.getItem("GEMINI_API_KEY");
+                if (!apiKey) {
+                    apiKey = window.prompt("Please enter your Gemini API Key (stored locally):");
+                    if (apiKey) localStorage.setItem("GEMINI_API_KEY", apiKey);
+                }
+            }
+            
+            if (!apiKey) {
+                throw new Error("Gemini API key is required to use AI features.");
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error?.message || `HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.candidates[0].content.parts[0].text.trim();
+                } catch (error) {
+                    console.error("API Attempt failed:", error);
+                    if (i === 4) throw error;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // --- AI POLISH NOTE ---
+        document.getElementById('polish-ai-btn').addEventListener('click', async () => {
+            const data = getSelectedData();
+            const notesInput = document.getElementById('teacher-notes');
+            const roughNotes = notesInput.value.trim();
+            const btnText = document.getElementById('ai-btn-text');
+            const aiBtn = document.getElementById('polish-ai-btn');
+            
+            if (!roughNotes && data.felt.length===0 && data.workedOn.length===0 && data.wentTo.length===0) {
+                showMessage("Please select some options or write notes to summarize!", "msg-error");
+                return;
+            }
+
+            let contextText = `Student Name: ${data.name}\n`;
+            if (data.felt.length) contextText += `Felt: ${data.felt.map(i=>i.text).join(', ')}\n`;
+            if (data.workedOn.length) contextText += `Worked on: ${data.workedOn.map(i=>i.text).join(', ')}\n`;
+            if (data.wentTo.length) contextText += `Went to: ${data.wentTo.map(i=>i.text).join(', ')}\n`;
+            if (data.saw.length) contextText += `Saw: ${data.saw.map(i=>i.text).join(', ')}\n`;
+            if (data.lunch.length) contextText += `Lunch: ${data.lunch.map(i=>i.text).join(', ')}\n`;
+            contextText += `Bathroom: Wet: ${data.counters.wet}, BM: ${data.counters.bm}, Dry: ${data.counters.dry}\n`;
+            if (data.needs.length) contextText += `Needs: ${data.needs.map(i=>i.text).join(', ')}\n`;
+
+            const prompt = `Please write an objective, parent-friendly summary note based on today's selections and the teacher's rough notes.\n\nToday's Selections:\n${contextText}\n\nTeacher's rough notes:\n"${roughNotes || 'No additional notes provided.'}"`;
+
+            // Updated System Instruction for Objective, Non-Toileting Narratives
+            const sysInstruction = `You are a professional special education teacher. Write a clear, objective, and concise paragraph (3-5 sentences max) summarizing the student's day for their parents. 
+            
+            CRITICAL INSTRUCTIONS:
+            - Maintain a clean, objective, and professional tone. Avoid overly emotional or flowery language.
+            - DO NOT write narrative sentences about "potty training", "bathroom success", or "managing routines". These students do not toilet independently. Simply state the factual numbers (e.g., "Care provided today: 1 wet, 1 BM.") or leave bathroom data out of the narrative entirely since it is tracked elsewhere on the form.
+            - Seamlessly integrate the selected activities, therapies, and the teacher's rough notes.
+            - Soften negative behaviors into objective, constructive observations.
+            - Output ONLY the polished paragraph, with no introductory filler.`;
+
+            try {
+                aiBtn.disabled = true;
+                aiBtn.classList.add('opacity-75');
+                btnText.innerHTML = '<div class="loader loader-sm"></div> Polishing...';
+                
+                const response = await callGeminiAPI(prompt, sysInstruction);
+                notesInput.value = response;
+                showMessage("Notes generated successfully!", "msg-success");
+            } catch (error) {
+                showMessage("Failed to generate notes.", "msg-error");
+            } finally {
+                aiBtn.disabled = false;
+                aiBtn.classList.remove('opacity-75');
+                btnText.innerText = '✨ Polish Notes';
+            }
+        });
+
+        // --- AI TRANSLATE NOTE ---
+        document.getElementById('translate-btn').addEventListener('click', async () => {
+            const notesInput = document.getElementById('teacher-notes');
+            const notesText = notesInput.value.trim();
+            const targetLang = document.getElementById('translate-lang').value;
+            const btn = document.getElementById('translate-btn');
+            const originalHtml = btn.innerHTML;
+            
+            if (!notesText) {
+                showMessage("Please enter some notes to translate first.", "msg-error");
+                return;
+            }
+
+            const langName = targetLang === 'es' ? 'Spanish' : 'English';
+            const prompt = `Translate the following text to ${langName}:\n\n${notesText}`;
+            const sysInstruction = "You are a professional translator. Translate the provided text accurately while maintaining its professional tone. Output ONLY the translated text without any conversational filler or quotes around it.";
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="loader loader-sm"></div>';
+                
+                const response = await callGeminiAPI(prompt, sysInstruction);
+                notesInput.value = response;
+                showMessage(`Translated to ${langName}!`, "msg-success");
+            } catch (error) {
+                showMessage("Failed to translate note.", "msg-error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        });
+
+        // --- STANDARD PDF ---
+        document.getElementById('pdf-btn').addEventListener('click', async () => {
+            const pdfBtn = document.getElementById('pdf-btn');
+            const originalBtnText = pdfBtn.innerHTML;
+            pdfBtn.innerHTML = '<div class="loader loader-sm"></div> Formatting...';
+            pdfBtn.disabled = true;
+            window.scrollTo(0, 0);
+
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.98); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
+            overlay.innerHTML = `
+                <div class="loader" style="width: 50px; height: 50px; border-width: 5px; margin-bottom: 20px;"></div>
+                <h2 style="font-size: 24px; font-weight: bold; color: #1f2937; font-family: sans-serif;">Formatting Standard PDF...</h2>
+            `;
+            document.body.appendChild(overlay);
+            await new Promise(r => setTimeout(r, 50)); 
+
+            try {
+                const pdfLanguage = document.getElementById('language-select').value;
+                const appContainer = document.getElementById('app-container');
+                
+                appContainer.querySelectorAll('input, textarea').forEach(el => {
+                    el.setAttribute('value', el.value);
+                });
+
+                const clone = appContainer.cloneNode(true);
+                clone.id = 'pdf-clone';
+                clone.style.backgroundColor = '#ffffff';
+                clone.style.padding = '20px'; 
+                
+                clone.querySelectorAll('.category-card').forEach(card => {
+                    card.style.pageBreakInside = 'avoid';
+                    card.style.breakInside = 'avoid';
+                });
+
+                const headerRight = clone.querySelector('#header-controls');
+                if (headerRight) headerRight.remove();
+
+                clone.querySelectorAll('.selection-btn').forEach(btn => {
+                    if (!btn.classList.contains('selected')) {
+                        btn.remove();
+                    } else {
+                        btn.className = 'selection-btn selected border-blue-500 bg-blue-50'; 
+                    }
+                });
+
+                const containerIds = ['felt-container', 'worked-on-container', 'went-to-container', 'saw-container', 'lunch-container', 'needs-container'];
+                containerIds.forEach(id => {
+                    const container = clone.querySelector(`#${id}`);
+                    if (container && container.children.length === 0) {
+                        container.innerHTML = `<div class="text-gray-400 italic col-span-full">${pdfLanguage === 'es' ? 'Ninguno' : 'None'}</div>`;
+                    }
+                });
+
+                const nameInput = clone.querySelector('#student-name');
+                if (nameInput) {
+                    const val = nameInput.value || (pdfLanguage === 'es' ? 'Estudiante' : 'Student');
+                    nameInput.outerHTML = `<div class="font-bold text-lg border-b-2 border-gray-200 pb-1 mt-1 text-gray-800">${val}</div>`;
+                }
+                const dateInput = clone.querySelector('#log-date');
+                if (dateInput) {
+                    let displayDate = "";
+                    if (dateInput.value) {
+                        const d = new Date(dateInput.value + 'T12:00:00');
+                        displayDate = d.toLocaleDateString(pdfLanguage === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    }
+                    dateInput.outerHTML = `<div class="font-bold text-lg border-b-2 border-gray-200 pb-1 mt-1 text-gray-800">${displayDate}</div>`;
+                }
+
+                clone.querySelectorAll('button[onclick^="updateCounter"]').forEach(btn => btn.remove());
+
+                const aiTools = clone.querySelector('#ai-tools-container');
+                if (aiTools) aiTools.remove();
+                const aiHelp = clone.querySelector('#ai-help-text');
+                if (aiHelp) aiHelp.remove();
+                
+                const notesArea = clone.querySelector('#teacher-notes');
+                if (notesArea) {
+                    const val = notesArea.value || (pdfLanguage === 'es' ? 'Sin notas adicionales.' : 'No additional notes.');
+                    notesArea.outerHTML = `<div class="bg-white p-4 rounded-lg border border-gray-200 min-h-[80px] text-gray-800 whitespace-pre-wrap">${val}</div>`;
+                }
+
+                if (pdfLanguage === 'es') {
+                    const dict = {
+                        "Daily Communication Log": "Reporte Diario de Comunicación",
+                        "Select activities and behaviors to generate a report.": "Resumen de las actividades de hoy.",
+                        "Student Information": "Información del Estudiante",
+                        "Student Name": "Nombre del Estudiante",
+                        "Date": "Fecha",
+                        "Today I felt...": "Hoy me sentí...",
+                        "Today I worked on...": "Hoy trabajé en...",
+                        "Today I went to...": "Hoy fui a...",
+                        "Today I saw...": "Hoy vi a...",
+                        "For lunch, I...": "En el almuerzo, yo...",
+                        "Care & Needs": "Cuidado y Necesidades",
+                        "Bathroom": "Baño",
+                        "Needs": "Necesidades",
+                        "Wet:": "Mojado:",
+                        "BM:": "Evac.:",
+                        "Dry:": "Seco:",
+                        "Teacher's Note": "Notas del Maestro(a)"
+                    };
+                    
+                    const textNodesWalker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT, null, false);
+                    let textNode;
+                    while (textNode = textNodesWalker.nextNode()) {
+                        const txt = textNode.nodeValue.trim();
+                        if (dict[txt]) {
+                            textNode.nodeValue = textNode.nodeValue.replace(txt, dict[txt]);
+                        }
+                    }
+                    
+                    clone.querySelectorAll('.selection-btn.selected').forEach(btn => {
+                        const textSpan = btn.querySelector('.btn-text');
+                        if (textSpan) {
+                            const cat = btn.dataset.category;
+                            const id = btn.dataset.id;
+                            const item = categories[cat]?.find(c => c.id === id);
+                            if (item && item.es) {
+                                textSpan.innerText = item.es;
+                            }
+                        }
+                    });
+                }
+
+                appContainer.style.display = 'none';
+                document.getElementById('action-buttons').style.display = 'none';
+                document.body.appendChild(clone);
+
+                await new Promise(r => setTimeout(r, 200));
+
+                const studentName = document.getElementById('student-name').value || "Student";
+                const logDateInput = document.getElementById('log-date').value || "Date";
+                const opt = {
+                    margin:       0.4,
+                    filename:     `Daily_Report_${studentName.replace(/ /g, '_')}_${logDateInput}.pdf`,
+                    image:        { type: 'jpeg', quality: 1 },
+                    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+                    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+                };
+
+                await html2pdf().set(opt).from(clone).save();
+                
+                document.body.removeChild(clone);
+                appContainer.style.display = 'block';
+                document.getElementById('action-buttons').style.display = 'grid';
+                
+                showMessage("PDF generated successfully!", "msg-success");
+                
+            } catch (error) {
+                console.error(error);
+                showMessage("Failed to generate PDF.", "msg-error");
+            } finally {
+                if(document.body.contains(overlay)) document.body.removeChild(overlay);
+                pdfBtn.innerHTML = originalBtnText;
+                pdfBtn.disabled = false;
+            }
+        });
+
+        // --- BULLETPROOF US-LETTER INFOGRAPHIC (TABLE LAYOUT ENGINE) ---
+        // This version entirely abandons floats, flexbox, and divs for layout.
+        // It uses HTML tables, which html2canvas parses with 100% mathematical accuracy.
+        // It strictly enforces the US Letter aspect ratio and dimensions.
+        document.getElementById('infographic-btn').addEventListener('click', async () => {
+            const infoBtn = document.getElementById('infographic-btn');
+            const originalBtnText = infoBtn.innerHTML;
+            infoBtn.innerHTML = '<div class="loader loader-sm text-white border-white"></div> Painting...';
+            infoBtn.disabled = true;
+
+            // Overlay hides the off-screen rendering element
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.98); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
+            overlay.innerHTML = `
+                <div class="loader" style="width: 50px; height: 50px; border-width: 5px; margin-bottom: 20px; border-top-color: #8b5cf6;"></div>
+                <h2 style="font-size: 24px; font-weight: bold; background: -webkit-linear-gradient(left, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-family: sans-serif;">Designing US Letter Infographic...</h2>
+            `;
+            document.body.appendChild(overlay);
+
+            await new Promise(r => setTimeout(r, 100));
+
+            try {
+                window.scrollTo(0, 0);
+
+                const data = getSelectedData();
+                const t = translations[data.lang];
+                
+                const renderItems = (items, emptyMsg) => {
+                    if (!items || items.length === 0) return `<div style="color: #9ca3af; font-style: italic; margin-bottom: 8px;">${emptyMsg}</div>`;
+                    return items.map(i => `
+                        <span style="display: inline-block; background: white; padding: 6px 14px; border-radius: 99px; margin: 0 6px 8px 0; border: 1px solid #d1d5db; white-space: nowrap;">
+                            <span style="font-size: 16px; vertical-align: middle;">${i.emoji}</span>
+                            <span style="font-weight: 600; color: #374151; font-size: 14px; margin-left: 4px; vertical-align: middle;">${i.text}</span>
+                        </span>
+                    `).join('');
+                };
+
+                const allActivities = [...data.workedOn, ...data.wentTo];
+                const headerTitle = data.lang === 'es' ? `${t.dayOf}${data.name}!` : `${data.name}${t.dayOf}`;
+                
+                // Bulletproof Table HTML
+                // 816px width is exactly 8.5 inches at 96dpi. This forces standard scale.
+                const html = `
+                    <div id="info-pdf-content" style="width: 816px; padding: 40px; font-family: Arial, Helvetica, sans-serif; background: #fafaf9; color: #1f2937; box-sizing: border-box; position: relative;">
+                        
+                        <!-- Header -->
+                        <div style="background: #3b82f6; border-radius: 20px; padding: 32px; text-align: center; color: white; margin-bottom: 24px;">
+                            <h1 style="font-size: 40px; font-weight: bold; margin: 0; letter-spacing: -1px;">${headerTitle}</h1>
+                            <p style="font-size: 18px; margin: 8px 0 0 0; font-weight: bold;">${data.date}</p>
+                        </div>
+
+                        <!-- STRICT TABLE LAYOUT -->
+                        <table style="width: 100%; border-collapse: separate; border-spacing: 24px 0; margin-left: -24px; table-layout: fixed;">
+                            <tr>
+                                <!-- Left Column -->
+                                <td style="width: 50%; vertical-align: top; padding: 0;">
+                                    
+                                    <div style="background: #fef3c7; border-radius: 16px; padding: 20px; border: 2px solid #fde68a; margin-bottom: 24px;">
+                                        <h2 style="font-size: 15px; font-weight: bold; color: #d97706; margin: 0 0 16px 0; text-transform: uppercase;">${t.howIFelt}</h2>
+                                        <div>${renderItems(data.felt, t.none)}</div>
+                                    </div>
+
+                                    <div style="background: #e0f2fe; border-radius: 16px; padding: 20px; border: 2px solid #bae6fd; margin-bottom: 24px;">
+                                        <h2 style="font-size: 15px; font-weight: bold; color: #0284c7; margin: 0 0 16px 0; text-transform: uppercase;">${t.activities}</h2>
+                                        <div>${renderItems(allActivities, t.none)}</div>
+                                    </div>
+                                    
+                                    <div style="background: #ffedd5; border-radius: 16px; padding: 20px; border: 2px solid #fed7aa;">
+                                        <h2 style="font-size: 15px; font-weight: bold; color: #c2410c; margin: 0 0 16px 0; text-transform: uppercase;">${t.lunchTitle}</h2>
+                                        <div>${renderItems(data.lunch, t.none)}</div>
+                                    </div>
+
+                                </td>
+
+                                <!-- Right Column -->
+                                <td style="width: 50%; vertical-align: top; padding: 0;">
+                                    
+                                    <div style="background: #dcfce7; border-radius: 16px; padding: 20px; border: 2px solid #bbf7d0; margin-bottom: 24px;">
+                                        <h2 style="font-size: 15px; font-weight: bold; color: #16a34a; margin: 0 0 16px 0; text-transform: uppercase;">${t.therapies}</h2>
+                                        <div>${renderItems(data.saw, t.none)}</div>
+                                    </div>
+
+                                    <div style="background: #f3e8ff; border-radius: 16px; padding: 20px; border: 2px solid #e9d5ff;">
+                                        <h2 style="font-size: 15px; font-weight: bold; color: #9333ea; margin: 0 0 16px 0; text-transform: uppercase;">${t.personalCare}</h2>
+                                        
+                                        <!-- Nested Table for Stats to prevent text overlap -->
+                                        <table style="width: 100%; background: white; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; text-align: center; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="padding: 16px; width: 33%;">
+                                                    <div style="font-size: 26px; font-weight: bold; color: #3b82f6;">${data.counters.wet}</div>
+                                                    <div style="font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase;">${t.wet}</div>
+                                                </td>
+                                                <td style="padding: 16px; width: 33%;">
+                                                    <div style="font-size: 26px; font-weight: bold; color: #8b5cf6;">${data.counters.bm}</div>
+                                                    <div style="font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase;">${t.bm}</div>
+                                                </td>
+                                                <td style="padding: 16px; width: 34%;">
+                                                    <div style="font-size: 26px; font-weight: bold; color: #10b981;">${data.counters.dry}</div>
+                                                    <div style="font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase;">${t.dry}</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <h3 style="font-size: 14px; font-weight: bold; color: #9333ea; margin: 0 0 12px 0; text-transform: uppercase;">${t.weNeed}</h3>
+                                        <div>${renderItems(data.needs, t.none)}</div>
+                                    </div>
+
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Teacher Notes -->
+                        <div style="background: white; border-radius: 16px; padding: 24px; border: 2px solid #e5e7eb; margin-top: 24px;">
+                            <h2 style="font-size: 15px; font-weight: bold; color: #4b5563; margin: 0 0 12px 0; text-transform: uppercase;">${t.notesTitle}</h2>
+                            <p style="font-size: 15px; line-height: 1.6; color: #374151; margin: 0; white-space: pre-wrap;">${data.notes}</p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 24px; font-weight: bold; color: #9ca3af; font-size: 14px;">
+                            ${t.thankYou}
+                        </div>
+                    </div>
+                `;
+
+                // Add to document, but place it completely behind the overlay so user doesn't see flash.
+                // Do NOT use display:none, otherwise html2canvas cannot calculate heights.
+                const wrapper = document.createElement('div');
+                wrapper.id = 'pdf-generation-wrapper';
+                wrapper.style.position = 'absolute'; 
+                wrapper.style.top = '0';
+                wrapper.style.left = '0';
+                wrapper.style.zIndex = '-1';
+                wrapper.style.opacity = '0.01'; // Practically invisible but mathematically present
+                wrapper.innerHTML = html;
+                document.body.appendChild(wrapper);
+
+                // Wait for styles/DOM to settle
+                await new Promise(r => setTimeout(r, 400)); 
+
+                const contentElement = document.getElementById('info-pdf-content');
+                const rawDateInput = document.getElementById('log-date').value || "Date";
+                
+                // EXPLICIT US LETTER CONFIGURATION
+                const opt = {
+                    margin:       [0.2, 0, 0.2, 0], // Top/Bottom margin, no side margin needed (handled by 816px container width)
+                    filename:     `Infographic_${data.name.replace(/ /g, '_')}_${rawDateInput}.pdf`,
+                    image:        { type: 'jpeg', quality: 1 },
+                    html2canvas:  { 
+                        scale: 2,           // High res rendering
+                        useCORS: true,      // Allow emojis
+                        width: 816,         // EXACT pixel width of US letter (8.5 * 96)
+                        windowWidth: 816,   // Prevent viewport resizing bugs
+                        letterRendering: true, // Fixes text squishing bugs
+                        scrollY: 0,
+                        logging: false
+                    },
+                    jsPDF: { 
+                        unit: 'in', 
+                        format: 'letter',   // STRICT US LETTER (8.5 x 11 in)
+                        orientation: 'portrait' 
+                    }
+                };
+
+                await html2pdf().set(opt).from(contentElement).save();
+                
+                // Cleanup
+                document.body.removeChild(wrapper);
+                showMessage("US Letter Infographic generated!", "msg-success");
+
+            } catch (error) {
+                console.error(error);
+                showMessage("Failed to generate Infographic.", "msg-error");
+                const wrapper = document.getElementById('pdf-generation-wrapper');
+                if (wrapper) document.body.removeChild(wrapper);
+            } finally {
+                if(document.body.contains(overlay)) document.body.removeChild(overlay);
+                infoBtn.innerHTML = originalBtnText;
+                infoBtn.disabled = false;
+            }
+        });
+
+    </script>
+</body>
+</html>
+
