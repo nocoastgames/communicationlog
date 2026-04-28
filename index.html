@@ -513,7 +513,7 @@
             
             // Fallback for static hosting (like GitHub Pages) so your key isn't hardcoded
             if (!apiKey || apiKey === "undefined" || apiKey.includes("process.env")) {
-                apiKey = localStorage.getItem("GEMINI_API_KEY") || "AIzaSyAor4JO213tts6tqISe994hHhJH1Y0FMj0";
+                apiKey = localStorage.getItem("GEMINI_API_KEY");
                 if (!apiKey) {
                     apiKey = window.prompt("Please enter your Gemini API Key (stored locally):");
                     if (apiKey) localStorage.setItem("GEMINI_API_KEY", apiKey);
@@ -669,11 +669,42 @@
                 const clone = appContainer.cloneNode(true);
                 clone.id = 'pdf-clone';
                 clone.style.backgroundColor = '#ffffff';
-                clone.style.padding = '20px'; 
+                clone.style.padding = '10px'; 
+                clone.style.maxWidth = '800px';
+                clone.style.margin = '0 auto';
                 
                 clone.querySelectorAll('.category-card').forEach(card => {
                     card.style.pageBreakInside = 'avoid';
                     card.style.breakInside = 'avoid';
+                    card.style.padding = '0.75rem';
+                    card.style.marginBottom = '0.5rem';
+                    card.style.boxShadow = 'none';
+                    card.style.border = '1px solid #e5e7eb';
+                });
+
+                // Reduce title sizes
+                clone.querySelectorAll('h1.text-3xl').forEach(title => {
+                    title.classList.remove('text-3xl');
+                    title.classList.add('text-2xl');
+                });
+                clone.querySelectorAll('h2.text-xl').forEach(title => {
+                    title.classList.remove('text-xl', 'mb-4', 'pb-2');
+                    title.classList.add('text-lg', 'mb-2', 'pb-1');
+                });
+                clone.querySelectorAll('p.mt-1').forEach(p => p.remove()); // remove subtitle
+
+                // Reduce gaps
+                clone.querySelectorAll('.gap-8').forEach(grid => {
+                    grid.classList.remove('gap-8');
+                    grid.classList.add('gap-4');
+                });
+                clone.querySelectorAll('.gap-4').forEach(grid => {
+                    grid.classList.remove('gap-4');
+                    grid.classList.add('gap-2');
+                });
+                clone.querySelectorAll('.gap-3').forEach(grid => {
+                    grid.classList.remove('gap-3');
+                    grid.classList.add('gap-1');
                 });
 
                 const headerRight = clone.querySelector('#header-controls');
@@ -683,7 +714,17 @@
                     if (!btn.classList.contains('selected')) {
                         btn.remove();
                     } else {
-                        btn.className = 'selection-btn selected border-blue-500 bg-blue-50'; 
+                        btn.className = 'selection-btn selected border-blue-500 bg-blue-50 flex-row gap-2 min-h-0';
+                        btn.style.padding = '0.25rem 0.5rem';
+                        const emoji = btn.querySelector('.btn-emoji');
+                        if (emoji) {
+                            emoji.style.fontSize = '1.25rem';
+                            emoji.style.marginBottom = '0';
+                        }
+                        const text = btn.querySelector('.btn-text');
+                        if (text) {
+                            text.style.fontSize = '0.75rem'; // smaller text
+                        }
                     }
                 });
 
@@ -720,7 +761,7 @@
                 const notesArea = clone.querySelector('#teacher-notes');
                 if (notesArea) {
                     const val = notesArea.value || (pdfLanguage === 'es' ? 'Sin notas adicionales.' : 'No additional notes.');
-                    notesArea.outerHTML = `<div class="bg-white p-4 rounded-lg border border-gray-200 min-h-[80px] text-gray-800 whitespace-pre-wrap">${val}</div>`;
+                    notesArea.outerHTML = `<div class="bg-gray-50 p-3 rounded-lg border border-gray-200 min-h-[60px] text-gray-800 whitespace-pre-wrap text-sm">${val}</div>`;
                 }
 
                 if (pdfLanguage === 'es') {
@@ -775,7 +816,7 @@
                 const studentName = document.getElementById('student-name').value || "Student";
                 const logDateInput = document.getElementById('log-date').value || "Date";
                 const opt = {
-                    margin:       0.4,
+                    margin:       [0.3, 0.4],
                     filename:     `Daily_Report_${studentName.replace(/ /g, '_')}_${logDateInput}.pdf`,
                     image:        { type: 'jpeg', quality: 1 },
                     html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
