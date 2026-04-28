@@ -483,7 +483,14 @@
 
         // --- API CALLER (AI Features) ---
         async function callGeminiAPI(promptText, systemInstruction) {
-            let apiKey = process.env.GEMINI_API_KEY;
+            let apiKey;
+            try {
+                // Vite might inject environment variables depending on configuration, 
+                // but in a raw inline script, 'process' is not defined.
+                apiKey = process.env.GEMINI_API_KEY;
+            } catch (e) {
+                apiKey = null;
+            }
             
             // Fallback for static hosting (like GitHub Pages) so your key isn't hardcoded
             if (!apiKey || apiKey === "undefined" || apiKey.includes("process.env")) {
@@ -573,7 +580,8 @@
                 notesInput.value = response;
                 showMessage("Notes generated successfully!", "msg-success");
             } catch (error) {
-                showMessage("Failed to generate notes.", "msg-error");
+                console.error("Polish Note Error:", error);
+                showMessage(error.message || "Failed to generate notes.", "msg-error");
             } finally {
                 aiBtn.disabled = false;
                 aiBtn.classList.remove('opacity-75');
@@ -606,7 +614,8 @@
                 notesInput.value = response;
                 showMessage(`Translated to ${langName}!`, "msg-success");
             } catch (error) {
-                showMessage("Failed to translate note.", "msg-error");
+                console.error("Translation Error:", error);
+                showMessage(error.message || "Failed to translate note.", "msg-error");
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;

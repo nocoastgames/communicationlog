@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Daily Communication Log",
+  "description": "A single-file web application that generates a Daily Communication Log for Special Education students, with AI summarization and PDF exporting capabilities.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
