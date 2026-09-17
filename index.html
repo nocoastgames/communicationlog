@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Communication Log</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf: needed to hand back an actual .pdf file rather than opening a print dialog -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -358,7 +360,12 @@
         .p-head .p-sub { font-size: 10pt; color: #4b5563; margin-top: 2pt; font-weight: 600; }
         .p-kicker { font-size: 8pt; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #6b7280; }
 
-        .p-cols { column-count: 2; column-gap: 18pt; }
+        /* Table layout, not multi-column/grid: html2canvas measures tables exactly
+           but gets column-count and CSS grid wrong. */
+        .p-cols { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+        .p-cols > tbody > tr > td { vertical-align: top; width: 50%; }
+        .p-col-l { padding-right: 9pt; }
+        .p-col-r { padding-left: 9pt; }
         .p-sec { break-inside: avoid; page-break-inside: avoid; margin-bottom: 11pt; }
         .p-sec h2 {
             font-size: 8.5pt; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
@@ -401,8 +408,11 @@
         }
         .g-head h1 { font-size: 24pt; font-weight: 800; margin: 0; letter-spacing: -.02em; }
         .g-head p { font-size: 11pt; font-weight: 600; margin: 4pt 0 0; opacity: .92; }
-        .g-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11pt; align-items: start; }
-        .g-box { border-radius: 12pt; padding: 11pt 12pt; border: 1.25pt solid; break-inside: avoid; page-break-inside: avoid; }
+        .g-grid { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+        .g-grid > tbody > tr > td { vertical-align: top; width: 50%; }
+        .g-col-l { padding-right: 5.5pt; }
+        .g-col-r { padding-left: 5.5pt; }
+        .g-box { border-radius: 12pt; padding: 11pt 12pt; border: 1.25pt solid; margin-bottom: 11pt; break-inside: avoid; page-break-inside: avoid; }
         .g-box h2 { font-size: 9pt; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; margin: 0 0 7pt; }
         .g-pill {
             display: inline-block; background: #fff; border: .75pt solid rgba(0,0,0,.14);
@@ -410,7 +420,8 @@
             font-size: 10pt; font-weight: 600; color: #374151;
         }
         .g-none { font-size: 9.5pt; color: #9ca3af; font-style: italic; }
-        .g-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6pt; margin-bottom: 8pt; }
+        .g-stats { width: 100%; border-collapse: separate; border-spacing: 3pt 0; margin-bottom: 8pt; table-layout: fixed; }
+        .g-stats > tbody > tr > td { width: 33.33%; padding: 0; }
         .g-stat { background: #fff; border: .75pt solid rgba(0,0,0,.12); border-radius: 9pt; padding: 7pt 2pt; text-align: center; }
         .g-stat .n { font-size: 17pt; font-weight: 800; line-height: 1; }
         .g-stat .l { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; color: #6b7280; margin-top: 3pt; }
@@ -453,11 +464,19 @@
             </div>
         </div>
         <div id="roster-bar" class="flex flex-wrap gap-2 items-center"></div>
+        <div id="carry-banner" class="hidden mt-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900 flex items-center justify-between gap-3 flex-wrap">
+            <span id="carry-text"></span>
+            <button id="carry-undo" class="btn btn-ghost text-xs py-1">Start blank instead</button>
+        </div>
         <div class="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-2">
             <label class="text-xs font-semibold text-gray-500">Logging for</label>
             <input type="text" id="student-name" class="field flex-1 min-w-[160px] py-1.5 text-sm font-semibold" placeholder="Student name" autocomplete="off">
             <button id="save-roster-btn" class="btn btn-ghost text-xs py-1.5">&#43; Save to roster</button>
         </div>
+        <label class="mt-2 flex items-center gap-2 text-xs font-semibold text-gray-500 cursor-pointer select-none">
+            <input type="checkbox" id="carry-toggle" class="w-4 h-4 accent-blue-600">
+            Carry the day&rsquo;s activities over to the next student
+        </label>
     </div>
 
     <!-- ============ CATEGORY CARDS (rendered by JS) ============ -->
@@ -504,8 +523,8 @@
     <!-- ============ ACTIONS ============ -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 mb-10">
         <button id="clear-btn" class="btn btn-ghost btn-lg">&#128465;&#65039; Clear Day</button>
-        <button id="print-report-btn" class="btn btn-dark btn-lg">&#128424;&#65039; Print Report</button>
-        <button id="print-info-btn" class="btn btn-fun btn-lg">&#127912; Print Infographic</button>
+        <button id="print-report-btn" class="btn btn-dark btn-lg">&#11015;&#65039; Download Report</button>
+        <button id="print-info-btn" class="btn btn-fun btn-lg">&#127912; Download Infographic</button>
     </div>
 
 </div>
@@ -587,6 +606,7 @@ var K_DRAFTS = 'dcl.drafts';
 var K_CUSTOM = 'dcl.custom';
 var K_DONE   = 'dcl.done';
 var K_LANG   = 'dcl.lang';
+var K_CARRY  = 'dcl.carry';
 
 function load(key, fallback) {
     try {
@@ -859,11 +879,22 @@ var drafts  = load(K_DRAFTS, {});
 var done    = load(K_DONE, {});
 var customizing = false;
 
+/* Which categories follow you to the next student. The class shares a schedule,
+   so activities/places/specialists/events repeat. Mood, lunch, supply requests,
+   bathroom counts and the note are per-child observations and never carry —
+   those are the ones that would put wrong information in a parent's hands. */
+var CARRY_KEYS = ['workedOn', 'wentTo', 'saw', 'events'];
+
 function blankState() {
     var sel = {};
     SECTIONS.forEach(function (s) { sel[s.key] = []; });
-    return { name: '', date: todayISO(), sel: sel, counters: { wet: 0, bm: 0, dry: 0 }, notes: '' };
+    return {
+        name: '', date: todayISO(), sel: sel,
+        counters: { wet: 0, bm: 0, dry: 0 }, notes: '',
+        carriedFrom: null, carriedCount: 0
+    };
 }
+function carryEnabled() { return load(K_CARRY, true) !== false; }
 var state = blankState();
 
 /* Items currently available in a category = defaults minus hidden, plus custom. */
@@ -1016,6 +1047,7 @@ function applyState() {
     renderCounters();
     renderAllGrids();
     renderRoster();
+    renderCarryBanner();
 }
 
 /* =========================================================================
@@ -1122,11 +1154,52 @@ function loadDraft(name, date) {
 
 function switchStudent(name) {
     if (slug(name) === slug(state.name)) return;
+    var source = state;                // snapshot before the swap
     saveDraft();                       // park what is on screen under its own name
+    var hadDraft = !!drafts[draftKey(name, state.date)];
     state = loadDraft(name, state.date);
+
+    // Same class, same schedule — don't make the teacher re-tap it for every child.
+    if (!hadDraft && carryEnabled() && slug(source.name)) {
+        var carried = 0;
+        CARRY_KEYS.forEach(function (k) {
+            if (source.sel[k] && source.sel[k].length) {
+                state.sel[k] = source.sel[k].slice();
+                carried += source.sel[k].length;
+            }
+        });
+        if (carried) {
+            state.carriedFrom = source.name;
+            state.carriedCount = carried;
+        }
+    }
+
     applyState();
-    $('save-state').textContent = '';
+    if (state.carriedFrom) queueSave();
+    else $('save-state').textContent = '';
     toast('Now logging ' + name, 'msg-info');
+}
+
+function startBlank() {
+    var name = state.name, date = state.date;
+    delete drafts[draftKey(name, date)];
+    save(K_DRAFTS, drafts);
+    state = blankState();
+    state.name = name;
+    state.date = date;
+    applyState();
+}
+
+function renderCarryBanner() {
+    var bar = $('carry-banner');
+    if (state.carriedFrom && state.carriedCount) {
+        $('carry-text').textContent =
+            'Carried ' + state.carriedCount + ' activit' + (state.carriedCount === 1 ? 'y' : 'ies') +
+            ' over from ' + state.carriedFrom + '. Mood, lunch, supplies and care counts stayed blank.';
+        bar.classList.remove('hidden');
+    } else {
+        bar.classList.add('hidden');
+    }
 }
 
 /* Fired when the name box loses focus or Enter is pressed — never per keystroke. */
@@ -1521,22 +1594,37 @@ function standardHTML(d) {
             '</table>' +
         '</div>';
 
+    // Greedily balance the two columns by rough rendered height so neither
+    // side runs long. Tables need an explicit split; column-count did this for us.
+    var blocks = [
+        { h: 1 + Math.ceil(d.groups.felt.length / 2),     html: section(t.felt,     d.groups.felt,     t.none) },
+        { h: 1 + Math.ceil(d.groups.workedOn.length / 2), html: section(t.workedOn, d.groups.workedOn, t.none) },
+        { h: 1 + Math.ceil(d.groups.wentTo.length / 2),   html: section(t.wentTo,   d.groups.wentTo,   t.none) },
+        { h: 1 + Math.ceil(d.groups.saw.length / 2),      html: section(t.saw,      d.groups.saw,      t.none) },
+        { h: 1 + Math.ceil(d.groups.lunch.length / 2),    html: section(t.lunch,    d.groups.lunch,    t.none) }
+    ];
+    if (d.groups.events.length) {
+        blocks.push({ h: 1 + Math.ceil(d.groups.events.length / 2), html: section(t.events, d.groups.events, t.none) });
+    }
+    blocks.push({ h: 4, html: care });
+    blocks.push({ h: 1 + Math.ceil(d.groups.needs.length / 2), html: section(t.needs, d.groups.needs, t.none) });
+
+    var lh = 0, rh = 0, left = '', right = '';
+    blocks.forEach(function (b) {
+        if (lh <= rh) { left += b.html; lh += b.h; }
+        else { right += b.html; rh += b.h; }
+    });
+
     return '<div class="p-doc">' +
         '<div class="p-head">' +
             '<div class="p-kicker">' + esc(t.docTitle) + '</div>' +
             '<h1>' + esc(d.name) + '</h1>' +
             '<div class="p-sub">' + esc(d.date) + '</div>' +
         '</div>' +
-        '<div class="p-cols">' +
-            section(t.felt,     d.groups.felt,     t.none) +
-            section(t.workedOn, d.groups.workedOn, t.none) +
-            section(t.wentTo,   d.groups.wentTo,   t.none) +
-            section(t.saw,      d.groups.saw,      t.none) +
-            section(t.lunch,    d.groups.lunch,    t.none) +
-            (d.groups.events.length ? section(t.events, d.groups.events, t.none) : '') +
-            care +
-            section(t.needs, d.groups.needs, t.none) +
-        '</div>' +
+        '<table class="p-cols"><tbody><tr>' +
+            '<td class="p-col-l">' + left + '</td>' +
+            '<td class="p-col-r">' + right + '</td>' +
+        '</tr></tbody></table>' +
         '<div class="p-sec" style="margin-top:6pt">' +
             '<h2>' + esc(t.notes) + '</h2>' +
             '<div class="p-notes">' + esc(d.notes) + '</div>' +
@@ -1556,11 +1644,11 @@ function infographicHTML(d) {
     var activities = d.groups.workedOn.concat(d.groups.wentTo);
 
     var careBody =
-        '<div class="g-stats">' +
-            '<div class="g-stat"><div class="n" style="color:#2563eb">' + d.counters.wet + '</div><div class="l">' + esc(t.wet) + '</div></div>' +
-            '<div class="g-stat"><div class="n" style="color:#7c3aed">' + d.counters.bm  + '</div><div class="l">' + esc(t.bm)  + '</div></div>' +
-            '<div class="g-stat"><div class="n" style="color:#059669">' + d.counters.dry + '</div><div class="l">' + esc(t.dry) + '</div></div>' +
-        '</div>' +
+        '<table class="g-stats"><tbody><tr>' +
+            '<td><div class="g-stat"><div class="n" style="color:#2563eb">' + d.counters.wet + '</div><div class="l">' + esc(t.wet) + '</div></div></td>' +
+            '<td><div class="g-stat"><div class="n" style="color:#7c3aed">' + d.counters.bm  + '</div><div class="l">' + esc(t.bm)  + '</div></div></td>' +
+            '<td><div class="g-stat"><div class="n" style="color:#059669">' + d.counters.dry + '</div><div class="l">' + esc(t.dry) + '</div></div></td>' +
+        '</tr></tbody></table>' +
         '<h2 style="color:#7e22ce;font-size:8pt">' + esc(t.weNeed) + '</h2>' +
         pills(d.groups.needs, t.none, 'g-pill');
 
@@ -1578,10 +1666,10 @@ function infographicHTML(d) {
 
     return '<div class="p-doc">' +
         '<div class="g-head"><h1>' + esc(title) + '</h1><p>' + esc(d.date) + '</p></div>' +
-        '<div class="g-grid">' +
-            '<div style="display:grid;gap:11pt;align-content:start">' + left + '</div>' +
-            '<div style="display:grid;gap:11pt;align-content:start">' + right + '</div>' +
-        '</div>' +
+        '<table class="g-grid"><tbody><tr>' +
+            '<td class="g-col-l">' + left + '</td>' +
+            '<td class="g-col-r">' + right + '</td>' +
+        '</tr></tbody></table>' +
         '<div class="g-notes"><h2>' + esc(t.notesTitle) + '</h2><p>' + esc(d.notes) + '</p></div>' +
         '<div class="g-foot">' + esc(t.thankYou) + '</div>' +
     '</div>';
@@ -1589,27 +1677,55 @@ function infographicHTML(d) {
 
 /* The browser's Save-as-PDF dialog pre-fills its filename from document.title,
    so swap the title for the duration of the print to keep the old naming. */
-var APP_TITLE = document.title;   // captured once, so back-to-back prints can't chain a stale title
+/* Render the document off-screen at exactly 816px (8.5in at 96dpi) and hand
+   back a saved .pdf, so every report leaves a copy on disk for your records. */
+function busyOverlay(label) {
+    var o = document.createElement('div');
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,.97);z-index:900;' +
+                      'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
+    o.innerHTML = '<div class="loader loader-dark" style="width:44px;height:44px;border-width:4px"></div>' +
+                  '<div style="font-weight:700;font-size:1rem;color:#374151"></div>';
+    o.lastChild.textContent = label;
+    document.body.appendChild(o);
+    return o;
+}
 
-function printDoc(html, filename) {
-    var root = $('print-root');
-    root.innerHTML = html;
-    document.title = filename;
+async function downloadPDF(html, filename, label) {
+    var overlay = busyOverlay(label);
+    var host = document.createElement('div');
+    // On-screen but behind the overlay: html2canvas cannot measure display:none.
+    host.style.cssText = 'position:absolute;top:0;left:0;z-index:-1;opacity:.01;pointer-events:none';
+    host.innerHTML = '<div id="pdf-page" style="width:816px;padding:40px;box-sizing:border-box;background:#fff">' + html + '</div>';
+    document.body.appendChild(host);
 
-    var restored = false;
-    function restore() {
-        if (restored) return;
-        restored = true;
-        document.title = APP_TITLE;
-        root.innerHTML = '';
-        window.removeEventListener('afterprint', restore);
+    try {
+        await new Promise(function (r) { setTimeout(r, 250); });   // let fonts/emoji settle
+        await html2pdf().set({
+            margin:   [0.25, 0, 0.25, 0],
+            filename: filename + '.pdf',
+            image:    { type: 'jpeg', quality: 0.92 },
+            html2canvas: {
+                scale: 2,                 // 816 * 2 across 8.5in ≈ 192dpi, crisp when printed
+                useCORS: true,
+                width: 816,
+                windowWidth: 816,
+                backgroundColor: '#ffffff',
+                scrollX: 0, scrollY: 0,
+                logging: false
+            },
+            jsPDF:     { unit: 'in', format: 'letter', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'], avoid: ['.p-sec', '.g-box', '.g-notes'] }
+        }).from(host.firstChild).save();
+        toast('Saved ' + filename + '.pdf to your downloads.', 'msg-success');
+        return true;
+    } catch (err) {
+        console.error(err);
+        toast('Could not build the PDF. Try again.', 'msg-error');
+        return false;
+    } finally {
+        host.remove();
+        overlay.remove();
     }
-    window.addEventListener('afterprint', restore);
-
-    setTimeout(function () {
-        window.print();
-        setTimeout(restore, 1500); // Safari/iOS do not always fire afterprint
-    }, 60);
 }
 
 /* Ctrl+P straight from the page should still produce a report, not a blank sheet. */
@@ -1629,16 +1745,18 @@ function markPrinted() {
     renderRoster();
 }
 
-$('print-report-btn').addEventListener('click', function () {
+$('print-report-btn').addEventListener('click', async function () {
     var d = buildData();
-    printDoc(standardHTML(d), 'Daily_Report_' + d.name.replace(/\s+/g, '_') + '_' + d.rawDate);
-    markPrinted();
+    var ok = await downloadPDF(standardHTML(d),
+        'Daily_Report_' + d.name.replace(/\s+/g, '_') + '_' + d.rawDate, 'Building the report PDF…');
+    if (ok) markPrinted();
 });
 
-$('print-info-btn').addEventListener('click', function () {
+$('print-info-btn').addEventListener('click', async function () {
     var d = buildData();
-    printDoc(infographicHTML(d), 'Infographic_' + d.name.replace(/\s+/g, '_') + '_' + d.rawDate);
-    markPrinted();
+    var ok = await downloadPDF(infographicHTML(d),
+        'Infographic_' + d.name.replace(/\s+/g, '_') + '_' + d.rawDate, 'Painting the infographic…');
+    if (ok) markPrinted();
 });
 
 /* =========================================================================
@@ -1668,6 +1786,12 @@ $('log-date').addEventListener('change', function () {
 });
 
 $('language-select').addEventListener('change', function () { save(K_LANG, this.value); });
+
+$('carry-toggle').addEventListener('change', function () { save(K_CARRY, this.checked); });
+$('carry-undo').addEventListener('click', function () {
+    startBlank();
+    toast('Started blank.', 'msg-info');
+});
 
 $('clear-btn').addEventListener('click', function () {
     confirmDialog('Clear this day?',
@@ -1703,6 +1827,7 @@ window.addEventListener('beforeunload', function () {
     var savedLang = load(K_LANG, 'en');
     $('language-select').value = savedLang === 'es' ? 'es' : 'en';
     $('translate-lang').value = savedLang === 'es' ? 'es' : 'en';
+    $('carry-toggle').checked = carryEnabled();
 
     // Come back after an accidental refresh and land exactly where you were.
     var last = load('dcl.last', null);

@@ -13,13 +13,26 @@ account. GitHub Pages serves that file directly.
 
 1. Add each student once with **+ Save to roster**. They become quick-pick chips.
 2. Tap a chip to switch students. The dot shows where each one stands:
-   grey = not started, amber = in progress, green = printed.
+   grey = not started, amber = in progress, green = PDF saved.
 3. Tap through the categories. Everything autosaves per student per date, so a
    refresh, a closed tab, or a dead battery never loses the day.
 4. Write rough notes and hit **✨ Polish Notes** for a parent-ready paragraph,
    or **Translate** to flip it between English and Spanish.
-5. **🖨️ Print Report** or **🎨 Print Infographic**, then choose *Save as PDF*.
-   The filename is pre-filled as `Daily_Report_<Name>_<date>`.
+5. **⬇️ Download Report** or **🎨 Download Infographic** saves a PDF straight to
+   your downloads as `Daily_Report_<Name>_<date>.pdf`. Print from that file, and
+   you keep a copy for your records.
+
+## Carry-over between students
+
+The class shares a schedule, so switching to a student who has no log yet brings
+the previous student's **Worked on / Went to / Saw / Special events** with you.
+A banner says what carried, with **Start blank instead** to undo it.
+
+**Mood, lunch, send-from-home, bathroom counts and the teacher's note never
+carry.** Those are per-child observations, and copying them between students
+would put wrong information in a parent's hands.
+
+Untick **Carry the day's activities over to the next student** to turn it off.
 
 ## Customising the icons
 
@@ -43,17 +56,25 @@ that device only and is never sent anywhere except Google. Get one free at
 
 Everything except those two buttons works with no key at all.
 
-## Printing
+## PDFs
 
-Reports are produced by the browser's own print pipeline, so PDFs are vector:
-small, searchable, and selectable. Page setup is US Letter with 0.45" margins.
-In Chrome's print dialog, turn **Background graphics** on for the infographic's
-colour panels, and leave Headers and footers off.
+The download buttons render the document off-screen at exactly 816px (8.5in at
+96dpi) and rasterise it via html2pdf at 2× — roughly 192dpi, crisp in print.
+Output is a single US Letter page, typically 100–200KB.
+
+Both layouts are built with HTML tables rather than CSS grid or `column-count`,
+because html2canvas measures tables exactly and gets the modern layout modes
+wrong. Keep that in mind before restyling the print documents.
+
+Pressing **Ctrl+P** on the page still works and produces a *vector* print of the
+standard report — smaller and text-searchable, but it does not leave a file
+behind. Turn on **Background graphics** in Chrome if you go that route.
 
 ## Local data
 
 Stored in `localStorage` under the `dcl.*` keys — roster, drafts, printed marks,
-custom icons, language. Drafts older than 60 days are pruned automatically.
+custom icons, carry-over preference, language. Drafts older than 60 days are
+pruned automatically.
 Clearing site data resets the tool to defaults.
 
 ## Repo notes
