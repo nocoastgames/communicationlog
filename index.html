@@ -4,1024 +4,1716 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Communication Log</title>
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- html2pdf for PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
+        :root {
+            --accent: #2563eb;
+            --accent-soft: #eff6ff;
+            --ink: #111827;
+            --ink-soft: #6b7280;
+            --line: #e5e7eb;
+            --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #f6f7f9;
+            color: var(--ink);
         }
 
-        .category-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 1.5rem;
+        /* ---------- Cards ---------- */
+        .card {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 1.25rem 1.25rem 1.375rem;
+            margin-bottom: 1rem;
         }
+        .card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            margin-bottom: 1rem;
+        }
+        .card-title {
+            font-size: 1.0625rem;
+            font-weight: 700;
+            letter-spacing: -.01em;
+        }
+        .card-count {
+            font-size: .75rem;
+            font-weight: 600;
+            color: var(--ink-soft);
+            background: #f3f4f6;
+            border-radius: 99px;
+            padding: .125rem .5rem;
+            white-space: nowrap;
+        }
+        .card-head { flex-wrap: wrap; }
 
-        .selection-btn {
+        /* ---------- Selection tiles ---------- */
+        .tile-grid { display: grid; gap: .5rem; }
+        .tile {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 0.75rem;
-            border: 2px solid #e5e7eb;
+            gap: .375rem;
+            padding: .75rem .375rem;
+            border: 1.5px solid var(--line);
             border-radius: 12px;
-            background-color: white;
+            background: #fff;
             cursor: pointer;
-            transition: all 0.2s;
-            height: 100%;
+            transition: border-color .15s, background-color .15s, transform .08s;
+            min-height: 84px;
             text-align: center;
         }
-
-        .selection-btn:hover {
-            border-color: #93c5fd;
-            background-color: #f0fdf4;
+        .tile:hover { border-color: #bfdbfe; background: #fafcff; }
+        .tile:active { transform: scale(.97); }
+        .tile.selected {
+            border-color: var(--accent);
+            background: var(--accent-soft);
         }
-
-        .selection-btn.selected {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+        .tile.selected::after {
+            content: "\2713";
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: .75rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
         }
+        .tile-emoji { font-size: 1.75rem; line-height: 1; font-family: var(--emoji); }
+        .tile-text { font-size: .75rem; font-weight: 600; color: #4b5563; line-height: 1.2; }
 
-        .btn-emoji {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+        /* Add / remove affordances (customize mode) */
+        .tile-add {
+            border-style: dashed;
+            border-color: #cbd5e1;
+            color: #64748b;
+            background: #fbfcfd;
         }
+        .tile-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+        .tile-remove {
+            position: absolute;
+            top: -7px;
+            left: -7px;
+            width: 22px;
+            height: 22px;
+            border-radius: 99px;
+            background: #ef4444;
+            color: #fff;
+            font-size: .8rem;
+            font-weight: 700;
+            line-height: 19px;
+            text-align: center;
+            border: 2px solid #fff;
+            cursor: pointer;
+            z-index: 2;
+            padding: 0;
+        }
+        .tile-remove:hover { background: #dc2626; }
+        .tile-hidden { opacity: .4; border-style: dashed; }
+        .tile-hidden .tile-remove { background: #10b981; }
+        body:not(.customizing) .tile-remove,
+        body:not(.customizing) .tile-hidden,
+        body:not(.customizing) .tile-add { display: none; }
+        .chip-x {
+            margin-left: .1rem; font-size: .9rem; line-height: 1; color: #9ca3af;
+            padding: 0 .1rem; border-radius: 4px;
+        }
+        .chip-x:hover { color: #ef4444; background: #fee2e2; }
+        .chip.active .chip-x { color: rgba(255,255,255,.6); }
+        body:not(.customizing) .chip-x { display: none; }
+        body.customizing .card { box-shadow: 0 0 0 2px #fde68a inset; }
 
-        .btn-text {
-            font-size: 0.875rem;
-            font-weight: 500;
+        /* ---------- Roster chips ---------- */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .4rem .75rem;
+            border-radius: 99px;
+            border: 1.5px solid var(--line);
+            background: #fff;
+            font-size: .8125rem;
+            font-weight: 600;
+            color: #374151;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all .15s;
+        }
+        .chip:hover { border-color: #bfdbfe; }
+        .chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+        .chip .dot {
+            width: 7px; height: 7px; border-radius: 99px;
+            background: #d1d5db;
+            flex: none;
+        }
+        .chip.has-draft .dot { background: #f59e0b; }
+        .chip.done .dot { background: #10b981; }
+        .chip.active .dot { outline: 1.5px solid rgba(255,255,255,.45); }
+
+        /* ---------- Counter ---------- */
+        .counter-row {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .5rem .625rem;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+        }
+        .counter-label { flex: 1; font-size: .8125rem; font-weight: 600; color: #4b5563; }
+        .counter-btn {
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            border: 1px solid var(--line);
+            background: #f9fafb;
+            font-size: 1.125rem;
+            font-weight: 700;
             color: #4b5563;
+            cursor: pointer;
+            line-height: 1;
         }
-        
-        /* Message Box styling */
-        #message-box {
+        .counter-btn:hover { background: #f3f4f6; border-color: #cbd5e1; }
+        .counter-btn:active { transform: scale(.94); }
+        .counter-val { width: 30px; text-align: center; font-size: 1.125rem; font-weight: 800; }
+        .counter-val.zero { color: #d1d5db; }
+
+        /* ---------- Buttons ---------- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            font-weight: 600;
+            border-radius: 11px;
+            padding: .625rem 1rem;
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            transition: all .15s;
+            font-size: .875rem;
+            white-space: nowrap;
+        }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-ghost { background: #fff; border-color: var(--line); color: #374151; }
+        .btn-ghost:hover:not(:disabled) { background: #f9fafb; border-color: #cbd5e1; }
+        .btn-ghost.on { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+        .btn-dark { background: var(--ink); color: #fff; }
+        .btn-dark:hover:not(:disabled) { background: #000; }
+        .btn-fun { background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; }
+        .btn-fun:hover:not(:disabled) { filter: brightness(1.08); }
+        .btn-lg { padding: .875rem 1.25rem; font-size: .9375rem; border-radius: 13px; }
+
+        .field {
+            width: 100%;
+            border: 1.5px solid var(--line);
+            border-radius: 11px;
+            padding: .625rem .875rem;
+            font-size: .9375rem;
+            background: #fff;
+            outline: none;
+            transition: border-color .15s;
+            color: var(--ink);
+        }
+        .field:focus { border-color: var(--accent); }
+
+        /* ---------- Toast ---------- */
+        #toast {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 16px 24px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
+            left: 50%;
+            bottom: 24px;
+            transform: translate(-50%, 12px);
+            padding: .75rem 1.25rem;
+            border-radius: 11px;
+            color: #fff;
+            font-weight: 600;
+            font-size: .875rem;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity .25s, transform .25s;
             pointer-events: none;
-            z-index: 50;
+            z-index: 200;
+            max-width: 90vw;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,.18);
         }
-        .msg-success { background-color: #10b981; }
-        .msg-error { background-color: #ef4444; }
-        .msg-info { background-color: #3b82f6; }
+        #toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .msg-success { background: #059669; }
+        .msg-error   { background: #dc2626; }
+        .msg-info    { background: #374151; }
+
+        /* ---------- Modal ---------- */
+        .modal-back {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 300;
+        }
+        .modal-back.open { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 18px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,.25);
+        }
+        .modal-head { padding: 1.125rem 1.25rem; border-bottom: 1px solid var(--line); }
+        .modal-body { padding: 1.25rem; overflow-y: auto; }
+        .modal-foot { padding: .875rem 1.25rem; border-top: 1px solid var(--line); display: flex; gap: .5rem; justify-content: flex-end; background: #fafafa; }
+
+        /* Emoji bank */
+        .bank-tabs { display: flex; gap: .375rem; overflow-x: auto; padding-bottom: .5rem; margin-bottom: .625rem; }
+        .bank-tab {
+            padding: .3rem .625rem; border-radius: 99px; border: 1.5px solid var(--line);
+            background: #fff; font-size: .75rem; font-weight: 600; color: #4b5563;
+            cursor: pointer; white-space: nowrap;
+        }
+        .bank-tab.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+        .bank-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: .375rem;
+            max-height: 208px;
+            overflow-y: auto;
+            padding: .375rem;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fafafa;
+        }
+        .bank-item {
+            aspect-ratio: 1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            font-family: var(--emoji);
+            border: 1.5px solid transparent;
+            border-radius: 10px;
+            background: #fff;
+            cursor: pointer;
+            padding: 0;
+        }
+        .bank-item:hover { border-color: #bfdbfe; }
+        .bank-item.picked { border-color: var(--accent); background: var(--accent-soft); }
+        .bank-empty { grid-column: 1/-1; padding: 1.5rem; text-align: center; color: #9ca3af; font-size: .8125rem; }
 
         /* Loader */
         .loader {
-            border: 3px solid #f3f3f3;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff;
             border-radius: 50%;
-            border-top: 3px solid #3b82f6;
-            width: 24px;
-            height: 24px;
-            -webkit-animation: spin 1s linear infinite;
-            animation: spin 1s linear infinite;
+            width: 15px; height: 15px;
+            animation: spin .8s linear infinite;
             display: inline-block;
-            vertical-align: middle;
-            margin-right: 8px;
+            flex: none;
         }
-        
-        .loader-sm {
-            width: 16px;
-            height: 16px;
-            border-width: 2px;
-            margin-right: 0;
+        .loader-dark { border-color: rgba(0,0,0,.15); border-top-color: var(--accent); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #save-state { font-size: .6875rem; font-weight: 600; color: #9ca3af; }
+
+        /* =======================================================
+           PRINT  —  real vector output, not a rasterised screenshot
+           ======================================================= */
+        #print-root { display: none; }
+
+        @page { size: letter portrait; margin: 0.45in; }
+
+        @media print {
+            html, body { background: #fff !important; }
+            body > *:not(#print-root) { display: none !important; }
+            #print-root { display: block !important; }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .p-doc {
+            font-family: 'Inter', system-ui, sans-serif;
+            color: #111827;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+        .p-emoji { font-family: var(--emoji); }
+
+        /* Standard report */
+        .p-head { border-bottom: 2.5pt solid #111827; padding-bottom: 8pt; margin-bottom: 12pt; }
+        .p-head h1 { font-size: 19pt; font-weight: 800; margin: 0; letter-spacing: -.02em; }
+        .p-head .p-sub { font-size: 10pt; color: #4b5563; margin-top: 2pt; font-weight: 600; }
+        .p-kicker { font-size: 8pt; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #6b7280; }
+
+        .p-cols { column-count: 2; column-gap: 18pt; }
+        .p-sec { break-inside: avoid; page-break-inside: avoid; margin-bottom: 11pt; }
+        .p-sec h2 {
+            font-size: 8.5pt; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+            color: #374151; margin: 0 0 5pt; padding-bottom: 3pt; border-bottom: .75pt solid #d1d5db;
+        }
+        .p-pill {
+            display: inline-block;
+            border: .75pt solid #cbd5e1;
+            border-radius: 99pt;
+            padding: 1.5pt 7pt;
+            margin: 0 3pt 3pt 0;
+            font-size: 9.5pt;
+            font-weight: 600;
+        }
+        .p-none { font-size: 9.5pt; color: #9ca3af; font-style: italic; }
+
+        .p-care { width: 100%; border-collapse: collapse; margin-top: 2pt; }
+        .p-care td { border: .75pt solid #d1d5db; padding: 5pt 7pt; font-size: 9.5pt; }
+        .p-care .k { font-weight: 700; color: #4b5563; width: 55%; }
+        .p-care .v { font-weight: 800; font-size: 11pt; }
+
+        .p-notes {
+            border: .75pt solid #d1d5db;
+            border-radius: 6pt;
+            padding: 9pt 11pt;
+            margin-top: 4pt;
+            font-size: 10.5pt;
+            white-space: pre-wrap;
+            background: #fafafa;
+        }
+        .p-foot {
+            margin-top: 14pt; padding-top: 7pt; border-top: .75pt solid #d1d5db;
+            text-align: center; font-size: 9pt; font-weight: 600; color: #6b7280;
         }
 
-        /* Infographic hidden container */
-        #infographic-container {
-            display: none;
-            width: 800px;
-            margin: 0 auto;
-            background: white;
+        /* Infographic */
+        .g-head {
+            background: #2563eb; color: #fff; border-radius: 14pt;
+            padding: 18pt 16pt; text-align: center; margin-bottom: 12pt;
         }
+        .g-head h1 { font-size: 24pt; font-weight: 800; margin: 0; letter-spacing: -.02em; }
+        .g-head p { font-size: 11pt; font-weight: 600; margin: 4pt 0 0; opacity: .92; }
+        .g-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11pt; align-items: start; }
+        .g-box { border-radius: 12pt; padding: 11pt 12pt; border: 1.25pt solid; break-inside: avoid; page-break-inside: avoid; }
+        .g-box h2 { font-size: 9pt; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; margin: 0 0 7pt; }
+        .g-pill {
+            display: inline-block; background: #fff; border: .75pt solid rgba(0,0,0,.14);
+            border-radius: 99pt; padding: 2pt 8pt; margin: 0 4pt 4pt 0;
+            font-size: 10pt; font-weight: 600; color: #374151;
+        }
+        .g-none { font-size: 9.5pt; color: #9ca3af; font-style: italic; }
+        .g-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6pt; margin-bottom: 8pt; }
+        .g-stat { background: #fff; border: .75pt solid rgba(0,0,0,.12); border-radius: 9pt; padding: 7pt 2pt; text-align: center; }
+        .g-stat .n { font-size: 17pt; font-weight: 800; line-height: 1; }
+        .g-stat .l { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; color: #6b7280; margin-top: 3pt; }
+        .g-notes { background: #fff; border: 1.25pt solid #e5e7eb; border-radius: 12pt; padding: 12pt 14pt; margin-top: 11pt; break-inside: avoid; }
+        .g-notes h2 { font-size: 9pt; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #4b5563; margin: 0 0 6pt; }
+        .g-notes p { font-size: 10.5pt; line-height: 1.5; margin: 0; white-space: pre-wrap; }
+        .g-foot { text-align: center; margin-top: 12pt; font-weight: 700; color: #9ca3af; font-size: 10pt; }
     </style>
 </head>
-<body class="text-gray-800 p-4 md:p-8 max-w-4xl mx-auto relative">
+<body class="p-3 md:p-6">
 
-    <div id="app-container">
-        <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-xl shadow-sm category-card">
+<div class="max-w-5xl mx-auto">
+
+    <!-- ============ HEADER ============ -->
+    <div class="card">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Daily Communication Log</h1>
-                <p class="text-gray-500 mt-1">Select activities and behaviors to generate a report.</p>
+                <h1 class="text-2xl font-extrabold tracking-tight">Daily Communication Log</h1>
+                <p class="text-sm text-gray-500 mt-0.5">Tap what happened today &mdash; everything saves as you go.</p>
             </div>
-            <div class="flex gap-4" id="header-controls">
-                <button id="change-key-btn" title="Change API Key" class="border-2 border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 focus:border-blue-500 focus:outline-none bg-white font-medium text-gray-700 flex items-center gap-2 transition-colors">
-                    <span>🔑</span> <span class="hidden sm:inline">API Key</span>
-                </button>
-                <select id="language-select" class="border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none bg-white font-medium text-gray-700">
-                    <option value="en">English PDFs</option>
-                    <option value="es">Spanish PDFs (Español)</option>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span id="save-state"></span>
+                <button id="customize-btn" class="btn btn-ghost" title="Add or remove icons">&#9998; Customize</button>
+                <button id="key-btn" class="btn btn-ghost" title="Gemini API key">&#128273;</button>
+                <select id="language-select" class="field w-auto py-2 text-sm font-semibold">
+                    <option value="en">English report</option>
+                    <option value="es">Reporte en Espa&ntilde;ol</option>
                 </select>
             </div>
         </div>
+    </div>
 
-    <!-- Student Info -->
-    <div class="category-card">
-        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Student Information</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
-                <input type="text" id="student-name" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none" placeholder="Enter name">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input type="date" id="log-date" class="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:outline-none">
+    <!-- ============ ROSTER ============ -->
+    <div class="card">
+        <div class="card-head" style="margin-bottom:.75rem">
+            <div class="card-title">Students</div>
+            <div class="flex items-center gap-2">
+                <span id="roster-progress" class="card-count"></span>
+                <input type="date" id="log-date" class="field w-auto py-1.5 text-sm font-semibold">
             </div>
         </div>
-    </div>
-
-    <!-- Today I Felt... -->
-    <div class="category-card">
-        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I felt...</h2>
-        <div class="grid grid-cols-3 md:grid-cols-6 gap-3" id="felt-container">
-            <!-- Buttons generated by JS -->
+        <div id="roster-bar" class="flex flex-wrap gap-2 items-center"></div>
+        <div class="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-2">
+            <label class="text-xs font-semibold text-gray-500">Logging for</label>
+            <input type="text" id="student-name" class="field flex-1 min-w-[160px] py-1.5 text-sm font-semibold" placeholder="Student name" autocomplete="off">
+            <button id="save-roster-btn" class="btn btn-ghost text-xs py-1.5">&#43; Save to roster</button>
         </div>
     </div>
 
-    <!-- Today I worked on... -->
-    <div class="category-card">
-        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I worked on...</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="worked-on-container">
-             <!-- Buttons generated by JS -->
-        </div>
-    </div>
+    <!-- ============ CATEGORY CARDS (rendered by JS) ============ -->
+    <div id="categories"></div>
 
-    <!-- Today I went to... -->
-    <div class="category-card">
-        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I went to...</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="went-to-container">
-             <!-- Buttons generated by JS -->
+    <!-- ============ CARE &amp; NEEDS ============ -->
+    <div class="card">
+        <div class="card-head">
+            <div class="card-title">Care &amp; Needs</div>
         </div>
-    </div>
-
-    <!-- Today I saw... -->
-    <div class="category-card">
-        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Today I saw...</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="saw-container">
-             <!-- Buttons generated by JS -->
-        </div>
-    </div>
-    
-    <!-- For lunch I... -->
-    <div class="category-card">
-        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">For lunch, I...</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="lunch-container">
-             <!-- Buttons generated by JS -->
-        </div>
-    </div>
-
-    <!-- Bathroom Report & Needs -->
-    <div class="category-card">
-        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Care & Needs</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-                <h3 class="font-semibold text-gray-700 mb-3">Bathroom</h3>
-                <div class="flex items-center gap-4 mb-3">
-                    <span class="w-16 font-medium text-gray-700">Wet:</span>
-                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('wet', -1)">-</button>
-                    <span id="count-wet" class="w-8 text-center font-bold text-lg">0</span>
-                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('wet', 1)">+</button>
-                </div>
-                <div class="flex items-center gap-4 mb-3">
-                    <span class="w-16 font-medium text-gray-700">BM:</span>
-                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('bm', -1)">-</button>
-                    <span id="count-bm" class="w-8 text-center font-bold text-lg">0</span>
-                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('bm', 1)">+</button>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span class="w-16 font-medium text-gray-700">Dry:</span>
-                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('dry', -1)">-</button>
-                    <span id="count-dry" class="w-8 text-center font-bold text-lg">0</span>
-                    <button class="px-3 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onclick="updateCounter('dry', 1)">+</button>
-                </div>
+                <div class="p-kicker mb-2">Bathroom</div>
+                <div class="space-y-2" id="counters"></div>
             </div>
             <div>
-                <h3 class="font-semibold text-gray-700 mb-3">Needs</h3>
-                <div class="grid grid-cols-2 gap-2" id="needs-container">
-                    <!-- Buttons generated by JS -->
-                </div>
+                <div class="p-kicker mb-2">Send from home</div>
+                <div id="needs-container" class="tile-grid grid-cols-2"></div>
             </div>
         </div>
     </div>
 
-    <!-- AI Generation Section -->
-    <div class="category-card bg-blue-50 border border-blue-100">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-            <h2 class="text-xl font-bold text-gray-800">Teacher's Note</h2>
-            
-            <div class="flex items-center gap-2" id="ai-tools-container">
-                <!-- Translation Dropdown & Button -->
-                <div class="flex border border-blue-200 rounded-lg bg-white overflow-hidden shadow-sm">
-                    <select id="translate-lang" class="px-3 py-1.5 text-sm bg-transparent border-none focus:ring-0 text-gray-700 outline-none cursor-pointer hover:bg-gray-50 transition-colors">
-                        <option value="en">🇺🇸 EN</option>
-                        <option value="es">🇪🇸 ES</option>
+    <!-- ============ TEACHER'S NOTE ============ -->
+    <div class="card" style="background:#f8fafc">
+        <div class="card-head flex-col md:flex-row items-start md:items-center">
+            <div>
+                <div class="card-title">Teacher's Note</div>
+                <p class="text-xs text-gray-500 mt-0.5">Jot rough notes, then let AI clean them up for parents.</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex rounded-[11px] border-[1.5px] border-gray-200 bg-white overflow-hidden">
+                    <select id="translate-lang" class="px-2.5 py-2 text-sm bg-transparent outline-none cursor-pointer font-semibold text-gray-700">
+                        <option value="en">EN</option>
+                        <option value="es">ES</option>
                     </select>
-                    <button id="translate-btn" title="Translate Note" class="px-3 py-1.5 text-sm font-medium bg-gray-50 hover:bg-gray-100 text-gray-700 border-l border-blue-200 transition-all">
-                        Translate
-                    </button>
+                    <button id="translate-btn" class="px-3 py-2 text-sm font-semibold bg-gray-50 hover:bg-gray-100 text-gray-700 border-l-[1.5px] border-gray-200">Translate</button>
                 </div>
-
-                <!-- Polish Notes Button -->
-                <button id="polish-ai-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center">
-                    <span id="ai-btn-text">✨ Polish Notes</span>
-                </button>
+                <button id="polish-btn" class="btn btn-primary">&#10024; Polish Notes</button>
             </div>
         </div>
-        
-        <p class="text-sm text-gray-600 mb-3" id="ai-help-text">Select the options above, jot down any extra thoughts, and click <b>✨ Polish Notes</b> to generate an objective summary!</p>
-        <textarea id="teacher-notes" class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-blue-500 focus:outline-none min-h-[120px]" placeholder="Type your rough notes here (e.g., 'struggled at recess but did great in math')..."></textarea>
+        <textarea id="teacher-notes" class="field min-h-[130px] resize-y" placeholder="e.g. rough morning, settled after mat time, great job requesting with device"></textarea>
     </div>
 
-    </div> <!-- End of app-container -->
-
-    <!-- Action Buttons -->
-    <div id="action-buttons" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 mb-12">
-        <button id="clear-btn" class="bg-white border-2 border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-4 px-6 rounded-xl transition-colors shadow-sm flex justify-center items-center gap-2">
-            🗑️ Clear Form
-        </button>
-        <button id="pdf-btn" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2">
-            📄 Standard PDF
-        </button>
-        <button id="infographic-btn" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2">
-            🎨 Generate Infographic
-        </button>
+    <!-- ============ ACTIONS ============ -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 mb-10">
+        <button id="clear-btn" class="btn btn-ghost btn-lg">&#128465;&#65039; Clear Day</button>
+        <button id="print-report-btn" class="btn btn-dark btn-lg">&#128424;&#65039; Print Report</button>
+        <button id="print-info-btn" class="btn btn-fun btn-lg">&#127912; Print Infographic</button>
     </div>
 
-    <!-- Message Box -->
-    <div id="message-box"></div>
+</div>
 
-    <script>
-        // --- DATA & CONFIGURATION ---
-        // Setup Date
-        document.getElementById('log-date').valueAsDate = new Date();
+<div id="toast"></div>
 
-        const categories = {
-            felt: [
-                { id: 'happy', emoji: '😊', en: 'Happy', es: 'Feliz' },
-                { id: 'sad', emoji: '😢', en: 'Sad', es: 'Triste' },
-                { id: 'tired', emoji: '😴', en: 'Tired', es: 'Cansado(a)' },
-                { id: 'silly', emoji: '🤪', en: 'Silly', es: 'Gracioso(a)' },
-                { id: 'frustrated', emoji: '😖', en: 'Frustrated', es: 'Frustrado(a)' },
-                { id: 'sick', emoji: '🤒', en: 'Sick', es: 'Enfermo(a)' }
-            ],
-            workedOn: [
-                { id: 'reading', emoji: '📚', en: 'Reading', es: 'Lectura' },
-                { id: 'math', emoji: '🔢', en: 'Math', es: 'Matemáticas' },
-                { id: 'writing', emoji: '✍️', en: 'Writing', es: 'Escritura' },
-                { id: 'art', emoji: '🎨', en: 'Art', es: 'Arte' },
-                { id: 'music', emoji: '🎵', en: 'Music', es: 'Música' },
-                { id: 'social', emoji: '🤝', en: 'Social', es: 'Socialización' },
-                { id: 'hygiene', emoji: '🧼', en: 'Hygiene/Self-Care', es: 'Higiene/Cuidado Personal' },
-                { id: 'mobility', emoji: '🚶', en: 'Mobility', es: 'Movilidad' },
-                { id: 'mat_time', emoji: '🧘', en: 'Mat Time', es: 'Tiempo en la Colchoneta' },
-                { id: 'communication', emoji: '💬', en: 'Communication', es: 'Comunicación' },
-                { id: 'technology', emoji: '💻', en: 'Technology', es: 'Tecnología' },
-                { id: 'other', emoji: '📝', en: 'Other', es: 'Otro' }
-            ],
-            wentTo: [
-                { id: 'library', emoji: '📖', en: 'Library', es: 'Biblioteca' },
-                { id: 'gym', emoji: '🏃', en: 'Gym/PE', es: 'Gimnasio/Ed. Física' },
-                { id: 'cafeteria', emoji: '🍱', en: 'Cafeteria', es: 'Cafetería' },
-                { id: 'therapy', emoji: '🧩', en: 'Therapy (OT/PT/Speech)', es: 'Terapia' },
-                { id: 'assembly', emoji: '🎭', en: 'Assembly', es: 'Asamblea' },
-                { id: 'music_class', emoji: '🎵', en: 'Music', es: 'Música' },
-                { id: 'humanities', emoji: '🌍', en: 'Humanities', es: 'Humanidades' },
-                { id: 'nurse_office', emoji: '🏥', en: 'Nurse', es: 'Enfermería' }
-            ],
-            saw: [
-                { id: 'nurse', emoji: '🩺', en: 'Nurse', es: 'Enfermero(a)' },
-                { id: 'ot', emoji: '👐', en: 'OT', es: 'Terapeuta Ocupacional (OT)' },
-                { id: 'pt', emoji: '💪', en: 'PT', es: 'Fisioterapeuta (PT)' },
-                { id: 'speech', emoji: '🗣️', en: 'Speech', es: 'Terapeuta de Habla' }
-            ],
-            lunch: [
-                { id: 'ate_all', emoji: '🍽️', en: 'Ate Everything', es: 'Comió Todo' },
-                { id: 'ate_some', emoji: '🥪', en: 'Ate Some', es: 'Comió Algo' },
-                { id: 'didnt_eat', emoji: '🙅', en: 'Did Not Eat', es: 'No Comió' },
-                { id: 'tried_new', emoji: '🌟', en: 'Tried Something New', es: 'Probó Algo Nuevo' }
-            ],
-            needs: [
-                { id: 'diapers', emoji: '🧻', en: 'Diapers/Pull-ups', es: 'Pañales' },
-                { id: 'wipes', emoji: '🧴', en: 'Wipes', es: 'Toallitas' },
-                { id: 'clothes', emoji: '👕', en: 'Extra Clothes', es: 'Ropa Extra' },
-                { id: 'snack', emoji: '🍎', en: 'Snacks', es: 'Meriendas' }
-            ]
-        };
+<!-- ============ MODAL: ADD ICON ============ -->
+<div class="modal-back" id="add-modal">
+    <div class="modal">
+        <div class="modal-head">
+            <div class="text-lg font-bold">Add an icon</div>
+            <div class="text-sm text-gray-500" id="add-modal-sub"></div>
+        </div>
+        <div class="modal-body">
+            <div class="flex items-center gap-3 mb-4">
+                <input type="text" id="add-emoji" class="w-[58px] h-[58px] rounded-xl border-[1.5px] border-gray-200 text-center text-3xl shrink-0 outline-none focus:border-blue-600" style="font-family:var(--emoji)" maxlength="8" autocomplete="off" aria-label="Chosen icon">
+                <div class="flex-1 space-y-2">
+                    <input type="text" id="add-label" class="field py-2 text-sm" placeholder="Label (e.g. Field Trip)" maxlength="34" autocomplete="off">
+                    <input type="text" id="add-label-es" class="field py-2 text-sm" placeholder="Spanish label (optional)" maxlength="34" autocomplete="off">
+                </div>
+            </div>
+            <input type="text" id="bank-search" class="field py-2 text-sm mb-3" placeholder="Search icons&hellip; (trip, calm, speech, snack)" autocomplete="off">
+            <div class="bank-tabs" id="bank-tabs"></div>
+            <div class="bank-grid" id="bank-grid"></div>
+            <p class="text-xs text-gray-400 mt-2">Tip: you can also paste any emoji straight into the box on the left.</p>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" id="add-confirm">Add icon</button>
+        </div>
+    </div>
+</div>
 
-        const translations = {
-            en: {
-                reportTitle: "Daily Report for",
-                date: "Date",
-                felt: "Today I felt...",
-                workedOn: "Today I worked on...",
-                wentTo: "Today I went to...",
-                saw: "Today I saw...",
-                lunch: "For lunch, I...",
-                bathroom: "Bathroom Report",
-                needs: "Needs",
-                notes: "Teacher's Notes",
-                wet: "Wet",
-                bm: "BM",
-                dry: "Dry",
-                none: "None",
-                thankYou: "Thank you for a great day!",
-                // Infographic specific
-                dayOf: "'s Day!",
-                howIFelt: "HOW I FELT",
-                activities: "ACTIVITIES & PLACES",
-                therapies: "THERAPIES & SPECIALISTS",
-                lunchTitle: "LUNCH",
-                personalCare: "PERSONAL CARE",
-                weNeed: "WE NEED",
-                notesTitle: "TEACHER'S NOTES"
-            },
-            es: {
-                reportTitle: "Reporte Diario de",
-                date: "Fecha",
-                felt: "Hoy me sentí...",
-                workedOn: "Hoy trabajé en...",
-                wentTo: "Hoy fui a...",
-                saw: "Hoy vi a...",
-                lunch: "En el almuerzo...",
-                bathroom: "Reporte de Baño",
-                needs: "Necesidades",
-                notes: "Notas del Maestro(a)",
-                wet: "Mojado",
-                bm: "Evacuación",
-                dry: "Seco",
-                none: "Ninguno",
-                thankYou: "¡Gracias por un gran día!",
-                // Infographic specific
-                dayOf: "¡Día de ",
-                howIFelt: "CÓMO ME SENTÍ",
-                activities: "ACTIVIDADES Y LUGARES",
-                therapies: "TERAPIAS Y ESPECIALISTAS",
-                lunchTitle: "ALMUERZO",
-                personalCare: "CUIDADO PERSONAL",
-                weNeed: "NECESITAMOS",
-                notesTitle: "NOTAS DEL MAESTRO(A)"
-            }
-        };
+<!-- ============ MODAL: API KEY ============ -->
+<div class="modal-back" id="key-modal">
+    <div class="modal" style="max-width:440px">
+        <div class="modal-head">
+            <div class="text-lg font-bold">Gemini API key</div>
+            <div class="text-sm text-gray-500">Stored only in this browser. Never uploaded anywhere but Google.</div>
+        </div>
+        <div class="modal-body">
+            <input type="password" id="key-input" class="field text-sm" placeholder="AIza&hellip;" autocomplete="off">
+            <p class="text-xs text-gray-500 mt-2">Leave blank and save to remove the stored key. Get one free at <span class="font-semibold">aistudio.google.com/apikey</span>.</p>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" id="key-save">Save key</button>
+        </div>
+    </div>
+</div>
 
-        // --- UI INITIALIZATION ---
-        function createButtons(containerId, categoryKey, type='multi') {
-            const container = document.getElementById(containerId);
-            categories[categoryKey].forEach(item => {
-                const btn = document.createElement('button');
-                btn.className = 'selection-btn';
-                btn.dataset.category = categoryKey;
-                btn.dataset.id = item.id;
-                
-                btn.innerHTML = `
-                    <span class="btn-emoji">${item.emoji}</span>
-                    <span class="btn-text">${item.en}</span>
-                `;
+<!-- ============ MODAL: CONFIRM ============ -->
+<div class="modal-back" id="confirm-modal">
+    <div class="modal" style="max-width:400px">
+        <div class="modal-head">
+            <div class="text-lg font-bold" id="confirm-title">Are you sure?</div>
+            <div class="text-sm text-gray-500 mt-1" id="confirm-body"></div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-dark" id="confirm-ok">Yes, do it</button>
+        </div>
+    </div>
+</div>
 
-                btn.onclick = () => {
-                    if (type === 'single') {
-                        const siblings = container.querySelectorAll('.selection-btn');
-                        siblings.forEach(s => { if(s !== btn) s.classList.remove('selected'); });
-                    }
-                    btn.classList.toggle('selected');
-                };
+<!-- ============ PRINT SURFACE ============ -->
+<div id="print-root"></div>
 
-                container.appendChild(btn);
+<script>
+(function () {
+'use strict';
+
+/* =========================================================================
+   1. STORAGE
+   ========================================================================= */
+var K_API    = 'GEMINI_API_KEY';   // kept as-is so an already-saved key keeps working
+var K_ROSTER = 'dcl.roster';
+var K_DRAFTS = 'dcl.drafts';
+var K_CUSTOM = 'dcl.custom';
+var K_DONE   = 'dcl.done';
+var K_LANG   = 'dcl.lang';
+
+function load(key, fallback) {
+    try {
+        var raw = localStorage.getItem(key);
+        return raw === null ? fallback : JSON.parse(raw);
+    } catch (e) { return fallback; }
+}
+function save(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode / quota */ }
+}
+
+/* =========================================================================
+   2. CATEGORY DEFINITIONS
+   ========================================================================= */
+var SECTIONS = [
+    { key: 'felt',     title: 'Today I felt…',      mode: 'multi',  cols: 'grid-cols-3 md:grid-cols-6', bank: 'feelings'  },
+    { key: 'workedOn', title: 'Today I worked on…', mode: 'multi',  cols: 'grid-cols-3 md:grid-cols-6', bank: 'academics' },
+    { key: 'wentTo',   title: 'Today I went to…',   mode: 'multi',  cols: 'grid-cols-3 md:grid-cols-6', bank: 'places'    },
+    { key: 'saw',      title: 'Today I saw…',       mode: 'multi',  cols: 'grid-cols-3 md:grid-cols-6', bank: 'people'    },
+    { key: 'lunch',    title: 'For lunch, I…',      mode: 'single', cols: 'grid-cols-2 md:grid-cols-4', bank: 'food'      },
+    { key: 'events',   title: 'Special events',          mode: 'multi',  cols: 'grid-cols-3 md:grid-cols-6', bank: 'events'    },
+    { key: 'needs',    title: 'Send from home',          mode: 'multi',  cols: 'grid-cols-2', bank: 'care', into: 'needs-container' }
+];
+var SECTION_BY_KEY = {};
+SECTIONS.forEach(function (s) { SECTION_BY_KEY[s.key] = s; });
+
+var DEFAULTS = {
+    felt: [
+        { id: 'happy',      emoji: '😊', en: 'Happy',       es: 'Feliz' },
+        { id: 'sad',        emoji: '😢', en: 'Sad',         es: 'Triste' },
+        { id: 'tired',      emoji: '😴', en: 'Tired',       es: 'Cansado(a)' },
+        { id: 'silly',      emoji: '🤪', en: 'Silly',       es: 'Gracioso(a)' },
+        { id: 'frustrated', emoji: '😖', en: 'Frustrated',  es: 'Frustrado(a)' },
+        { id: 'sick',       emoji: '🤒', en: 'Sick',        es: 'Enfermo(a)' }
+    ],
+    workedOn: [
+        { id: 'reading',       emoji: '📚', en: 'Reading',           es: 'Lectura' },
+        { id: 'math',          emoji: '🔢', en: 'Math',              es: 'Matemáticas' },
+        { id: 'writing',       emoji: '✍️', en: 'Writing',           es: 'Escritura' },
+        { id: 'art',           emoji: '🎨', en: 'Art',               es: 'Arte' },
+        { id: 'music',         emoji: '🎵', en: 'Music',             es: 'Música' },
+        { id: 'social',        emoji: '🤝', en: 'Social',            es: 'Socialización' },
+        { id: 'hygiene',       emoji: '🧼', en: 'Hygiene/Self-Care', es: 'Higiene/Cuidado Personal' },
+        { id: 'mobility',      emoji: '🚶', en: 'Mobility',          es: 'Movilidad' },
+        { id: 'mat_time',      emoji: '🧘', en: 'Mat Time',          es: 'Tiempo en la Colchoneta' },
+        { id: 'communication', emoji: '💬', en: 'Communication',     es: 'Comunicación' },
+        { id: 'technology',    emoji: '💻', en: 'Technology',        es: 'Tecnología' },
+        { id: 'other',         emoji: '📝', en: 'Other',             es: 'Otro' }
+    ],
+    wentTo: [
+        { id: 'library',      emoji: '📖', en: 'Library',              es: 'Biblioteca' },
+        { id: 'gym',          emoji: '🏃', en: 'Gym/PE',               es: 'Gimnasio/Ed. Física' },
+        { id: 'cafeteria',    emoji: '🍱', en: 'Cafeteria',            es: 'Cafetería' },
+        { id: 'therapy',      emoji: '🧩', en: 'Therapy (OT/PT/Speech)', es: 'Terapia' },
+        { id: 'assembly',     emoji: '🎭', en: 'Assembly',             es: 'Asamblea' },
+        { id: 'music_class',  emoji: '🎵', en: 'Music',                es: 'Música' },
+        { id: 'humanities',   emoji: '🌍', en: 'Humanities',           es: 'Humanidades' },
+        { id: 'nurse_office', emoji: '🏥', en: 'Nurse',                es: 'Enfermería' }
+    ],
+    saw: [
+        { id: 'nurse',  emoji: '🩺', en: 'Nurse',  es: 'Enfermero(a)' },
+        { id: 'ot',     emoji: '👐', en: 'OT',     es: 'Terapeuta Ocupacional (OT)' },
+        { id: 'pt',     emoji: '💪', en: 'PT',     es: 'Fisioterapeuta (PT)' },
+        { id: 'speech', emoji: '🗣️', en: 'Speech', es: 'Terapeuta de Habla' }
+    ],
+    lunch: [
+        { id: 'ate_all',   emoji: '🍽️', en: 'Ate Everything',      es: 'Comió Todo' },
+        { id: 'ate_some',  emoji: '🥪', en: 'Ate Some',            es: 'Comió Algo' },
+        { id: 'didnt_eat', emoji: '🙅', en: 'Did Not Eat',         es: 'No Comió' },
+        { id: 'tried_new', emoji: '🌟', en: 'Tried Something New', es: 'Probó Algo Nuevo' }
+    ],
+    events: [
+        { id: 'field_trip',  emoji: '🚌', en: 'Field Trip',   es: 'Excursión' },
+        { id: 'picture_day', emoji: '📸', en: 'Picture Day',  es: 'Día de Fotos' },
+        { id: 'birthday',    emoji: '🎂', en: 'Birthday',     es: 'Cumpleaños' },
+        { id: 'drill',       emoji: '🔔', en: 'Safety Drill', es: 'Simulacro' },
+        { id: 'party',       emoji: '🎉', en: 'Celebration',  es: 'Celebración' },
+        { id: 'visitor',     emoji: '👋', en: 'Visitor',      es: 'Visita' },
+        { id: 'substitute',  emoji: '🔄', en: 'Substitute',   es: 'Suplente' },
+        { id: 'spirit_day',  emoji: '🎽', en: 'Spirit Day',   es: 'Día Escolar' }
+    ],
+    needs: [
+        { id: 'diapers', emoji: '🧻', en: 'Diapers/Pull-ups', es: 'Pañales' },
+        { id: 'wipes',   emoji: '🧴', en: 'Wipes',            es: 'Toallitas' },
+        { id: 'clothes', emoji: '👕', en: 'Extra Clothes',    es: 'Ropa Extra' },
+        { id: 'snack',   emoji: '🍎', en: 'Snacks',           es: 'Meriendas' }
+    ]
+};
+
+/* =========================================================================
+   3. ICON BANK  —  searchable emoji palette, grouped by area
+   ========================================================================= */
+var BANK_GROUPS = [
+    { id: 'feelings',  label: 'Feelings' },
+    { id: 'academics', label: 'Learning' },
+    { id: 'places',    label: 'Places' },
+    { id: 'people',    label: 'People' },
+    { id: 'food',      label: 'Food' },
+    { id: 'care',      label: 'Care' },
+    { id: 'events',    label: 'Events' },
+    { id: 'activity',  label: 'Activities' },
+    { id: 'marks',     label: 'Marks' }
+];
+
+var BANK = {
+    feelings: [
+        ['😊','happy glad smile'], ['😢','sad cry upset'], ['😴','tired sleepy rest'],
+        ['🤪','silly goofy playful'], ['😖','frustrated upset angry'], ['🤒','sick ill unwell'],
+        ['😡','angry mad'], ['😰','anxious worried nervous'], ['😌','calm regulated relaxed'],
+        ['🥳','excited celebrate proud'], ['🤗','affectionate hug loving'], ['😐','neutral okay flat'],
+        ['🥺','sensitive teary'], ['😭','crying sobbing distress'], ['🤕','hurt pain injury'],
+        ['😤','overwhelmed dysregulated'], ['🙂','content pleasant'], ['😬','nervous uneasy'],
+        ['🤔','focused thinking curious'], ['💤','sleepy nap drowsy'], ['❤️','loved affection heart'],
+        ['🌈','hopeful bright'], ['😇','sweet kind gentle'], ['😳','embarrassed shy']
+    ],
+    academics: [
+        ['📚','reading books literacy'], ['🔢','math numbers counting'], ['✍️','writing handwriting'],
+        ['🎨','art painting craft'], ['🎵','music singing song'], ['🔬','science lab experiment'],
+        ['🌍','social studies humanities geography'], ['💻','technology computer device'], ['🧩','puzzle problem solving'],
+        ['🔤','letters alphabet phonics'], ['📖','story time read aloud'], ['🖍️','coloring drawing'],
+        ['✂️','cutting scissors fine motor'], ['📐','geometry shapes measuring'], ['🧮','counting abacus arithmetic'],
+        ['📝','other notes worksheet'], ['🖥️','computer lab screen'], ['📊','data graphing charts'],
+        ['🗂️','organization sorting'], ['🎯','goal target iep objective'], ['🧠','cognitive thinking memory'],
+        ['👀','attention looking visual tracking'], ['🖊️','signing name pencil'], ['📏','measurement ruler']
+    ],
+    places: [
+        ['📖','library books'], ['🏃','gym pe physical education'], ['🍱','cafeteria lunchroom'],
+        ['🧩','therapy room ot pt speech'], ['🎭','assembly auditorium theater'], ['🎵','music room band'],
+        ['🌍','humanities social studies room'], ['🏥','nurse clinic health office'], ['🏫','classroom homeroom'],
+        ['🌳','playground outside recess'], ['🚌','bus transportation ride'], ['🎪','field trip outing'],
+        ['🏊','pool swimming aquatics'], ['🛝','park slide playset'], ['🚪','hallway transition'],
+        ['🏢','front office main office'], ['🎨','art room studio'], ['🌻','garden greenhouse'],
+        ['🛒','store community outing shopping'], ['🍎','snack area kitchen'], ['🚻','restroom bathroom'],
+        ['🛗','elevator ramp access'], ['🏟️','field track stadium'], ['🎬','media center video']
+    ],
+    people: [
+        ['🩺','nurse health'], ['👐','ot occupational therapist'], ['💪','pt physical therapist'],
+        ['🗣️','speech slp language therapist'], ['🧑‍⚕️','doctor medical'], ['👩‍🏫','teacher educator'],
+        ['🧑‍🤝‍🧑','peers friends classmates'], ['👪','family parent guardian'], ['🧑‍💼','counselor psychologist'],
+        ['🎓','principal administrator'], ['🤟','interpreter sign language'], ['🐕','therapy dog animal'],
+        ['👤','visitor guest observer'], ['🧑‍🔧','aide paraprofessional support staff'], ['🎼','music therapist'],
+        ['🧑‍🍳','cafeteria staff cook'], ['🚸','crossing guard safety'], ['🧑‍💻','specialist consultant'],
+        ['🧘','yoga mindfulness instructor'], ['👮','police officer resource'], ['🚒','firefighter'],
+        ['📸','photographer'], ['🧑‍🌾','volunteer helper'], ['👓','vision specialist tvi']
+    ],
+    food: [
+        ['🍽️','ate everything full meal'], ['🥪','ate some partial sandwich'], ['🙅','did not eat refused'],
+        ['🌟','tried something new'], ['🍎','fruit apple'], ['🥛','milk dairy'],
+        ['🧃','juice drink'], ['💧','water hydration'], ['🍕','pizza'],
+        ['🥕','vegetables carrot veggies'], ['🍪','snack cookie treat'], ['🥣','cereal soup bowl'],
+        ['🍌','banana'], ['🧀','cheese'], ['🍞','bread toast'],
+        ['🥤','drink cup straw'], ['🍗','protein meat chicken'], ['🥄','fed by staff spoon assisted'],
+        ['🍴','self fed independent utensils'], ['🚫','refused declined'], ['🤢','nausea sick stomach'],
+        ['🍲','tube feed g-tube'], ['🧊','ice chips thickened'], ['🥨','pretzel crackers']
+    ],
+    care: [
+        ['🧻','diapers pull-ups briefs'], ['🧴','wipes lotion'], ['👕','extra clothes shirt'],
+        ['🍎','snacks food from home'], ['🧼','hygiene soap handwashing'], ['🪥','toothbrush dental'],
+        ['🧦','socks'], ['👟','shoes'], ['🩹','bandaids first aid'],
+        ['💊','medication meds'], ['🧤','gloves'], ['🧺','laundry bag soiled'],
+        ['🚿','shower bathing'], ['💺','wheelchair seating'], ['🦽','equipment adaptive'],
+        ['🛏️','rest changing table'], ['🔋','charger device battery'], ['🎧','headphones noise'],
+        ['🕶️','glasses vision'], ['🦻','hearing aid'], ['🧸','comfort item lovey'],
+        ['📦','supplies restock'], ['🧷','safety pins'], ['🧳','backpack bag']
+    ],
+    events: [
+        ['🚌','field trip bus outing'], ['📸','picture day photos'], ['🎂','birthday cake'],
+        ['🔔','drill fire alarm safety'], ['🎉','party celebration'], ['👋','visitor guest'],
+        ['🔄','substitute coverage'], ['🎽','spirit day dress up'], ['🏆','award recognition'],
+        ['🎃','holiday halloween'], ['🎄','holiday winter christmas'], ['🌟','achievement milestone'],
+        ['🎤','performance concert show'], ['🏅','medal competition'], ['🎁','gift present'],
+        ['🍿','movie day popcorn'], ['🐾','pet visit animal'], ['🌡️','health screening'],
+        ['🗳️','election voting'], ['🚨','lockdown drill emergency'], ['⛈️','weather delay storm'],
+        ['🎓','graduation promotion'], ['💐','celebration flowers'], ['🎪','carnival fair']
+    ],
+    activity: [
+        ['🤝','social sharing turn taking'], ['🧘','mat time stretching'], ['💬','communication talking requesting'],
+        ['🚶','mobility walking gait'], ['🧼','self care hygiene'], ['🎮','games play'],
+        ['🧱','blocks building'], ['🎲','turn taking board game'], ['🫧','sensory bubbles'],
+        ['🎹','piano keyboard instrument'], ['🪁','outdoor play kite'], ['🤸','movement gross motor'],
+        ['🎯','fine motor precision'], ['🏋️','gross motor strength'], ['🛝','recess playground'],
+        ['📱','aac device tablet communication'], ['🖐️','hand over hand prompting'], ['👂','listening auditory'],
+        ['👁️','eye gaze looking'], ['🔁','routine transition schedule'], ['🧹','chores classroom job'],
+        ['🌱','gardening planting'], ['🧶','crafts sewing'], ['🧺','life skills folding']
+    ],
+    marks: [
+        ['✅','yes done complete'], ['❌','no did not'], ['⭐','star great'],
+        ['❤️','heart love'], ['🔴','red alert'], ['🟢','green good'],
+        ['🟡','yellow caution'], ['🔵','blue'], ['⚠️','warning caution'],
+        ['ℹ️','info note'], ['📈','progress improved growth'], ['📉','decline regression'],
+        ['➕','plus more increase'], ['➖','minus less decrease'], ['🕐','time schedule clock'],
+        ['📅','date calendar'], ['📌','pin important'], ['🔖','bookmark'],
+        ['💡','idea suggestion'], ['🏁','finished done'], ['🔒','private confidential'],
+        ['🆕','new first time'], ['🔁','repeat again'], ['❓','question follow up']
+    ]
+};
+
+/* =========================================================================
+   4. REPORT LABEL TRANSLATIONS
+   ========================================================================= */
+var T = {
+    en: {
+        docTitle: 'Daily Communication Log', date: 'Date',
+        felt: 'Today I felt', workedOn: 'Today I worked on', wentTo: 'Today I went to',
+        saw: 'Today I saw', lunch: 'For lunch, I', events: 'Special events',
+        bathroom: 'Bathroom', needs: 'Send from home', notes: "Teacher's Notes",
+        wet: 'Wet', bm: 'BM', dry: 'Dry', none: 'None', thankYou: 'Thank you for a great day!',
+        dayOf: "'s Day!", howIFelt: 'How I felt', activities: 'Activities & places',
+        therapies: 'Therapies & specialists', lunchTitle: 'Lunch', personalCare: 'Personal care',
+        weNeed: 'Please send', notesTitle: "Teacher's notes", eventsTitle: 'Special events'
+    },
+    es: {
+        docTitle: 'Reporte Diario de Comunicación', date: 'Fecha',
+        felt: 'Hoy me sentí', workedOn: 'Hoy trabajé en', wentTo: 'Hoy fui a',
+        saw: 'Hoy vi a', lunch: 'En el almuerzo', events: 'Eventos especiales',
+        bathroom: 'Baño', needs: 'Enviar de casa', notes: 'Notas del Maestro(a)',
+        wet: 'Mojado', bm: 'Evacuación', dry: 'Seco', none: 'Ninguno',
+        thankYou: '¡Gracias por un gran día!',
+        dayOf: '¡Día de ', howIFelt: 'Cómo me sentí', activities: 'Actividades y lugares',
+        therapies: 'Terapias y especialistas', lunchTitle: 'Almuerzo', personalCare: 'Cuidado personal',
+        weNeed: 'Favor de enviar', notesTitle: 'Notas del maestro(a)', eventsTitle: 'Eventos especiales'
+    }
+};
+
+/* =========================================================================
+   5. SMALL HELPERS
+   ========================================================================= */
+var $ = function (id) { return document.getElementById(id); };
+
+/* Every value that reaches innerHTML goes through this. A note containing
+   "temp < 99" or "Mom & Dad" used to silently mangle the printed report. */
+function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function prettyDate(iso, lang) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T12:00:00');
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+}
+function slug(s) { return String(s).trim().toLowerCase().replace(/\s+/g, ' '); }
+
+var toastTimer = null;
+function toast(text, kind) {
+    var box = $('toast');
+    box.textContent = text;
+    box.className = (kind || 'msg-info') + ' show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { box.classList.remove('show'); }, 3600);
+}
+
+/* =========================================================================
+   6. APP STATE
+   ========================================================================= */
+var custom  = load(K_CUSTOM, { added: {}, hidden: {} });
+if (!custom.added)  custom.added = {};
+if (!custom.hidden) custom.hidden = {};
+
+var roster  = load(K_ROSTER, []);
+var drafts  = load(K_DRAFTS, {});
+var done    = load(K_DONE, {});
+var customizing = false;
+
+function blankState() {
+    var sel = {};
+    SECTIONS.forEach(function (s) { sel[s.key] = []; });
+    return { name: '', date: todayISO(), sel: sel, counters: { wet: 0, bm: 0, dry: 0 }, notes: '' };
+}
+var state = blankState();
+
+/* Items currently available in a category = defaults minus hidden, plus custom. */
+function itemsFor(key) {
+    var hidden = custom.hidden[key] || [];
+    var base = (DEFAULTS[key] || []).filter(function (i) { return hidden.indexOf(i.id) === -1; });
+    return base.concat(custom.added[key] || []);
+}
+function findItem(key, id) {
+    var list = itemsFor(key);
+    for (var i = 0; i < list.length; i++) { if (list[i].id === id) return list[i]; }
+    return null;
+}
+function isCustom(key, id) {
+    return (custom.added[key] || []).some(function (i) { return i.id === id; });
+}
+
+/* =========================================================================
+   7. RENDERING
+   ========================================================================= */
+function buildShell() {
+    var wrap = $('categories');
+    wrap.innerHTML = '';
+    SECTIONS.forEach(function (s) {
+        if (s.into) return;
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML =
+            '<div class="card-head">' +
+                '<div class="card-title">' + esc(s.title) + '</div>' +
+                '<span class="card-count" id="count-' + s.key + '"></span>' +
+            '</div>' +
+            '<div class="tile-grid ' + s.cols + '" id="grid-' + s.key + '"></div>';
+        wrap.appendChild(card);
+    });
+
+    var counters = $('counters');
+    counters.innerHTML = '';
+    [['wet', 'Wet'], ['bm', 'BM'], ['dry', 'Dry']].forEach(function (pair) {
+        var row = document.createElement('div');
+        row.className = 'counter-row';
+        row.innerHTML =
+            '<span class="counter-label">' + pair[1] + '</span>' +
+            '<button type="button" class="counter-btn" data-step="-1" data-c="' + pair[0] + '">&minus;</button>' +
+            '<span class="counter-val" id="cv-' + pair[0] + '">0</span>' +
+            '<button type="button" class="counter-btn" data-step="1" data-c="' + pair[0] + '">&plus;</button>';
+        counters.appendChild(row);
+    });
+    counters.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-step]');
+        if (!b) return;
+        bumpCounter(b.dataset.c, parseInt(b.dataset.step, 10));
+    });
+}
+
+function tileHTML(item, removable) {
+    return '<span class="tile-emoji">' + esc(item.emoji) + '</span>' +
+           '<span class="tile-text">' + esc(item.en) + '</span>' +
+           (removable ? '<span class="tile-remove" data-act="' + removable + '">' +
+                (removable === 'restore' ? '&plus;' : '&times;') + '</span>' : '');
+}
+
+function renderGrid(key) {
+    var s = SECTION_BY_KEY[key];
+    var el = $(s.into || ('grid-' + key));
+    if (!el) return;
+    if (s.into) el.className = 'tile-grid ' + s.cols;
+    el.innerHTML = '';
+
+    itemsFor(key).forEach(function (item) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tile' + (state.sel[key].indexOf(item.id) > -1 ? ' selected' : '');
+        btn.innerHTML = tileHTML(item, 'remove');
+        btn.addEventListener('click', function (e) {
+            if (e.target.dataset && e.target.dataset.act === 'remove') { removeItem(key, item.id); return; }
+            toggleItem(key, item.id);
+        });
+        el.appendChild(btn);
+    });
+
+    // Hidden built-ins come back as ghost tiles while customizing, so nothing is lost for good.
+    (custom.hidden[key] || []).forEach(function (id) {
+        var item = (DEFAULTS[key] || []).filter(function (i) { return i.id === id; })[0];
+        if (!item) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tile tile-hidden';
+        btn.title = 'Tap to put this icon back';
+        btn.innerHTML = tileHTML(item, 'restore');
+        btn.addEventListener('click', function () { restoreItem(key, id); });
+        el.appendChild(btn);
+    });
+
+    var add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'tile tile-add';
+    add.innerHTML = '<span class="tile-emoji">&plus;</span><span class="tile-text">Add icon</span>';
+    add.addEventListener('click', function () { openAddModal(key); });
+    el.appendChild(add);
+
+    var badge = $('count-' + key);
+    if (badge) {
+        var n = state.sel[key].length;
+        badge.textContent = n ? n + ' selected' : '';
+    }
+}
+
+function renderAllGrids() { SECTIONS.forEach(function (s) { renderGrid(s.key); }); }
+
+function renderCounters() {
+    ['wet', 'bm', 'dry'].forEach(function (c) {
+        var el = $('cv-' + c);
+        el.textContent = state.counters[c];
+        el.classList.toggle('zero', state.counters[c] === 0);
+    });
+}
+
+function renderRoster() {
+    var bar = $('roster-bar');
+    bar.innerHTML = '';
+    if (!roster.length) {
+        bar.innerHTML = '<span class="text-sm text-gray-400">No students saved yet — type a name below and tap &ldquo;Save to roster&rdquo;.</span>';
+    }
+    var doneCount = 0;
+    roster.forEach(function (name) {
+        var dk = draftKey(name, state.date);
+        var cls = 'chip';
+        if (slug(name) === slug(state.name) && state.name) cls += ' active';
+        if (done[dk]) { cls += ' done'; doneCount++; }
+        else if (drafts[dk]) cls += ' has-draft';
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = cls;
+        chip.innerHTML = '<span class="dot"></span>' + esc(name) +
+                         '<span class="chip-x" data-act="drop">&times;</span>';
+        chip.addEventListener('click', function (e) {
+            if (e.target.dataset && e.target.dataset.act === 'drop') { dropFromRoster(name); return; }
+            switchStudent(name);
+        });
+        bar.appendChild(chip);
+    });
+    $('roster-progress').textContent = roster.length ? doneCount + ' of ' + roster.length + ' printed' : '';
+}
+
+function applyState() {
+    $('student-name').value = state.name;
+    $('log-date').value = state.date;
+    $('teacher-notes').value = state.notes;
+    renderCounters();
+    renderAllGrids();
+    renderRoster();
+}
+
+/* =========================================================================
+   8. EDITING ACTIONS
+   ========================================================================= */
+function toggleItem(key, id) {
+    var mode = SECTION_BY_KEY[key].mode;
+    var arr = state.sel[key];
+    var at = arr.indexOf(id);
+    if (mode === 'single') state.sel[key] = at > -1 ? [] : [id];
+    else if (at > -1) arr.splice(at, 1);
+    else arr.push(id);
+    renderGrid(key);
+    queueSave();
+}
+
+function bumpCounter(c, step) {
+    state.counters[c] = Math.max(0, state.counters[c] + step);
+    renderCounters();
+    queueSave();
+}
+
+function removeItem(key, id) {
+    function drop() {
+        var at = state.sel[key].indexOf(id);
+        if (at > -1) state.sel[key].splice(at, 1);
+        if (isCustom(key, id)) {
+            custom.added[key] = (custom.added[key] || []).filter(function (i) { return i.id !== id; });
+        } else {
+            custom.hidden[key] = (custom.hidden[key] || []).concat([id]);
+        }
+        save(K_CUSTOM, custom);
+        renderGrid(key);
+        queueSave();
+    }
+    if (isCustom(key, id)) {
+        var item = findItem(key, id);
+        confirmDialog('Delete this icon?',
+            '“' + (item ? item.en : id) + '” is one you made. Deleting it removes it for good.',
+            'Delete', drop);
+    } else {
+        drop();
+        toast('Icon hidden. Tap the dashed copy to bring it back.', 'msg-info');
+    }
+}
+
+function restoreItem(key, id) {
+    custom.hidden[key] = (custom.hidden[key] || []).filter(function (x) { return x !== id; });
+    save(K_CUSTOM, custom);
+    renderGrid(key);
+}
+
+/* =========================================================================
+   9. ROSTER + AUTOSAVE
+   ========================================================================= */
+function draftKey(name, date) { return slug(name) + '|' + date; }
+
+function isEmptyState(s) {
+    var any = SECTIONS.some(function (sec) { return s.sel[sec.key].length > 0; });
+    return !any && !s.notes.trim() && !s.counters.wet && !s.counters.bm && !s.counters.dry;
+}
+
+/* state.name is the name the form on screen BELONGS to. The text box is only a
+   draft of that name until it is committed, so half-typed names never create
+   drafts and never overwrite another student's day. */
+function readInputs() { state.notes = $('teacher-notes').value; }
+
+function saveDraft() {
+    readInputs();
+    if (!slug(state.name)) return;
+    var dk = draftKey(state.name, state.date);
+    if (isEmptyState(state)) delete drafts[dk];
+    else drafts[dk] = { sel: state.sel, counters: state.counters, notes: state.notes, t: Date.now() };
+    save(K_DRAFTS, drafts);
+    save('dcl.last', { name: state.name, date: state.date });
+}
+
+var saveTimer = null;
+function queueSave() {
+    var tag = $('save-state');
+    tag.textContent = slug(state.name) ? 'Saving…' : '';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+        saveDraft();
+        tag.textContent = slug(state.name) ? 'Saved ✓' : 'Name this log to save it';
+        renderRoster();
+    }, 500);
+}
+
+function loadDraft(name, date) {
+    var s = blankState();
+    s.name = name;
+    s.date = date;
+    var d = drafts[draftKey(name, date)];
+    if (d) {
+        SECTIONS.forEach(function (sec) {
+            s.sel[sec.key] = Array.isArray(d.sel && d.sel[sec.key]) ? d.sel[sec.key].slice() : [];
+        });
+        s.counters = { wet: (d.counters && d.counters.wet) || 0, bm: (d.counters && d.counters.bm) || 0, dry: (d.counters && d.counters.dry) || 0 };
+        s.notes = d.notes || '';
+    }
+    return s;
+}
+
+function switchStudent(name) {
+    if (slug(name) === slug(state.name)) return;
+    saveDraft();                       // park what is on screen under its own name
+    state = loadDraft(name, state.date);
+    applyState();
+    $('save-state').textContent = '';
+    toast('Now logging ' + name, 'msg-info');
+}
+
+/* Fired when the name box loses focus or Enter is pressed — never per keystroke. */
+function commitName() {
+    var typed = $('student-name').value.trim();
+    if (!typed) { $('student-name').value = state.name; return; }
+    if (slug(typed) === slug(state.name)) {
+        state.name = typed;            // same student, different capitalisation
+        queueSave();
+        return;
+    }
+    if (!slug(state.name)) {
+        // First student of the session: adopt the name and keep whatever is
+        // already on screen rather than blanking it.
+        state.name = typed;
+        saveDraft();
+        renderRoster();
+        $('save-state').textContent = 'Saved ✓';
+        return;
+    }
+    switchStudent(typed);
+}
+
+function addToRoster(name) {
+    name = String(name).trim();
+    if (!name) { toast('Type a name first.', 'msg-error'); return; }
+    commitName();
+    var exists = roster.some(function (n) { return slug(n) === slug(name); });
+    if (exists) { toast(name + ' is already on the roster.', 'msg-info'); return; }
+    roster.push(name);
+    roster.sort(function (a, b) { return a.localeCompare(b); });
+    save(K_ROSTER, roster);
+    renderRoster();
+    toast(name + ' added to roster.', 'msg-success');
+}
+
+function dropFromRoster(name) {
+    confirmDialog('Remove ' + name + '?',
+        'This only takes them off the quick-pick roster. Saved drafts are untouched.',
+        'Remove', function () {
+            roster = roster.filter(function (n) { return slug(n) !== slug(name); });
+            save(K_ROSTER, roster);
+            renderRoster();
+        });
+}
+
+/* Drafts older than 60 days are noise; drop them so localStorage stays small. */
+function pruneOldData() {
+    var cutoff = Date.now() - 60 * 24 * 3600 * 1000;
+    var changed = false;
+    Object.keys(drafts).forEach(function (k) {
+        if (!drafts[k] || !drafts[k].t || drafts[k].t < cutoff) { delete drafts[k]; changed = true; }
+    });
+    Object.keys(done).forEach(function (k) {
+        var iso = k.split('|')[1];
+        var when = iso ? new Date(iso + 'T12:00:00').getTime() : 0;
+        if (!when || when < cutoff) { delete done[k]; changed = true; }
+    });
+    if (changed) { save(K_DRAFTS, drafts); save(K_DONE, done); }
+}
+
+/* =========================================================================
+   10. MODALS
+   ========================================================================= */
+function openModal(id)  { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+
+document.addEventListener('click', function (e) {
+    if (e.target.hasAttribute && e.target.hasAttribute('data-close-modal')) {
+        e.target.closest('.modal-back').classList.remove('open');
+    }
+    if (e.target.classList && e.target.classList.contains('modal-back')) {
+        e.target.classList.remove('open');
+    }
+});
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        Array.prototype.forEach.call(document.querySelectorAll('.modal-back.open'), function (m) { m.classList.remove('open'); });
+    }
+});
+
+var confirmCb = null;
+function confirmDialog(title, body, okLabel, cb) {
+    $('confirm-title').textContent = title;
+    $('confirm-body').textContent = body;
+    $('confirm-ok').textContent = okLabel;
+    confirmCb = cb;
+    openModal('confirm-modal');
+}
+$('confirm-ok').addEventListener('click', function () {
+    closeModal('confirm-modal');
+    if (confirmCb) { var f = confirmCb; confirmCb = null; f(); }
+});
+
+/* ---------- Add-icon modal ---------- */
+var addKey = null;
+var bankGroup = 'feelings';
+
+function openAddModal(key) {
+    addKey = key;
+    bankGroup = SECTION_BY_KEY[key].bank;
+    $('add-modal-sub').textContent = 'Into “' + SECTION_BY_KEY[key].title + '”';
+    $('add-emoji').value = '';
+    $('add-label').value = '';
+    $('add-label-es').value = '';
+    $('bank-search').value = '';
+    renderBankTabs();
+    renderBank();
+    openModal('add-modal');
+    setTimeout(function () { $('add-label').focus(); }, 60);
+}
+
+function renderBankTabs() {
+    var tabs = $('bank-tabs');
+    tabs.innerHTML = '';
+    BANK_GROUPS.forEach(function (g) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'bank-tab' + (g.id === bankGroup ? ' active' : '');
+        b.textContent = g.label;
+        b.addEventListener('click', function () {
+            bankGroup = g.id;
+            $('bank-search').value = '';
+            renderBankTabs();
+            renderBank();
+        });
+        tabs.appendChild(b);
+    });
+}
+
+function renderBank() {
+    var q = $('bank-search').value.trim().toLowerCase();
+    var grid = $('bank-grid');
+    var list = [];
+
+    if (q) {
+        Object.keys(BANK).forEach(function (g) {
+            BANK[g].forEach(function (pair) {
+                if (pair[1].indexOf(q) > -1) list.push(pair);
             });
+        });
+        // de-duplicate emoji that live in more than one group
+        var seen = {};
+        list = list.filter(function (p) { if (seen[p[0]]) return false; seen[p[0]] = 1; return true; });
+    } else {
+        list = BANK[bankGroup] || [];
+    }
+
+    grid.innerHTML = '';
+    if (!list.length) {
+        grid.innerHTML = '<div class="bank-empty">No icons match “' + esc(q) + '”.</div>';
+        return;
+    }
+    var current = $('add-emoji').value;
+    list.forEach(function (pair) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'bank-item' + (pair[0] === current ? ' picked' : '');
+        b.textContent = pair[0];
+        b.title = pair[1];
+        b.addEventListener('click', function () {
+            $('add-emoji').value = pair[0];
+            if (!$('add-label').value.trim()) {
+                var word = pair[1].split(' ')[0];
+                $('add-label').value = word.charAt(0).toUpperCase() + word.slice(1);
+            }
+            renderBank();
+        });
+        grid.appendChild(b);
+    });
+}
+
+$('bank-search').addEventListener('input', renderBank);
+$('add-emoji').addEventListener('input', renderBank);
+
+$('add-confirm').addEventListener('click', function () {
+    var emoji = $('add-emoji').value.trim();
+    var label = $('add-label').value.trim();
+    var labelEs = $('add-label-es').value.trim();
+    if (!emoji)  { toast('Pick an icon first.', 'msg-error'); return; }
+    if (!label)  { toast('Give it a label.', 'msg-error'); $('add-label').focus(); return; }
+
+    var item = {
+        id: 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36),
+        emoji: emoji,
+        en: label,
+        es: labelEs || label
+    };
+    custom.added[addKey] = (custom.added[addKey] || []).concat([item]);
+    save(K_CUSTOM, custom);
+    renderGrid(addKey);
+    closeModal('add-modal');
+    toast('“' + label + '” added.', 'msg-success');
+});
+
+/* ---------- API key modal ---------- */
+function getKey() {
+    try { return (localStorage.getItem(K_API) || '').trim(); } catch (e) { return ''; }
+}
+$('key-btn').addEventListener('click', function () {
+    $('key-input').value = getKey();
+    openModal('key-modal');
+});
+$('key-save').addEventListener('click', function () {
+    var v = $('key-input').value.trim();
+    try {
+        if (v) { localStorage.setItem(K_API, v); toast('API key saved in this browser.', 'msg-success'); }
+        else   { localStorage.removeItem(K_API); toast('API key removed.', 'msg-info'); }
+    } catch (e) { toast('Could not save — browser storage is blocked.', 'msg-error'); }
+    closeModal('key-modal');
+});
+
+/* =========================================================================
+   11. GEMINI
+   ========================================================================= */
+async function callGemini(prompt, systemInstruction) {
+    var key = getKey();
+    if (!key) {
+        openModal('key-modal');
+        throw new Error('Add your Gemini API key first (the 🔑 button).');
+    }
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key);
+    var body = JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        systemInstruction: { parts: [{ text: systemInstruction }] }
+    });
+
+    var delay = 800;
+    for (var attempt = 0; attempt < 3; attempt++) {
+        var res;
+        try {
+            res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body });
+        } catch (netErr) {
+            if (attempt === 2) throw new Error('No response from Google — check your internet connection.');
+            await sleep(delay); delay *= 2; continue;
         }
 
-        createButtons('felt-container', 'felt', 'multi');
-        createButtons('worked-on-container', 'workedOn', 'multi');
-        createButtons('went-to-container', 'wentTo', 'multi');
-        createButtons('saw-container', 'saw', 'multi');
-        createButtons('lunch-container', 'lunch', 'single');
-        createButtons('needs-container', 'needs', 'multi');
-
-        // Counters
-        let counters = { wet: 0, bm: 0, dry: 0 };
-        function updateCounter(type, change) {
-            counters[type] = Math.max(0, counters[type] + change);
-            document.getElementById(`count-${type}`).innerText = counters[type];
+        if (res.ok) {
+            var data = await res.json();
+            var parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+            var text = parts ? parts.map(function (p) { return p.text || ''; }).join('') : '';
+            if (!text.trim()) throw new Error('The model sent back an empty response. Try again.');
+            return text.trim();
         }
 
-        // --- MESSAGING ---
-        function showMessage(text, type = 'msg-info') {
-            const box = document.getElementById('message-box');
-            box.textContent = text;
-            box.className = type;
-            box.style.opacity = '1';
-            setTimeout(() => { box.style.opacity = '0'; }, 4000);
+        var msg = 'HTTP ' + res.status;
+        try {
+            var errBody = await res.json();
+            if (errBody && errBody.error && errBody.error.message) msg = errBody.error.message;
+        } catch (e) { /* non-JSON error body */ }
+
+        // Only rate-limits and server faults are worth waiting on. A bad key
+        // used to burn ~15 seconds of backoff before admitting it was wrong.
+        if (res.status === 429 || res.status >= 500) {
+            if (attempt === 2) throw new Error('Google is busy right now: ' + msg);
+            await sleep(delay); delay *= 2; continue;
         }
-
-        // --- HELPER: GET SELECTED DATA ---
-        function getSelectedData() {
-            const lang = document.getElementById('language-select').value;
-            const getName = (btn) => {
-                const cat = btn.dataset.category;
-                const id = btn.dataset.id;
-                const item = categories[cat].find(c => c.id === id);
-                return lang === 'es' ? item.es : item.en;
-            };
-
-            const getItems = (containerId) => {
-                return Array.from(document.getElementById(containerId).querySelectorAll('.selected')).map(btn => ({
-                    emoji: btn.querySelector('.btn-emoji').innerText,
-                    text: getName(btn)
-                }));
-            };
-
-            const rawDate = document.getElementById('log-date').value;
-            let formattedDate = "";
-            if (rawDate) {
-                const d = new Date(rawDate + 'T12:00:00');
-                formattedDate = d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            }
-
-            return {
-                lang: lang,
-                name: document.getElementById('student-name').value || (lang === 'es' ? 'Estudiante' : 'Student'),
-                date: formattedDate,
-                felt: getItems('felt-container'),
-                workedOn: getItems('worked-on-container'),
-                wentTo: getItems('went-to-container'),
-                saw: getItems('saw-container'),
-                lunch: getItems('lunch-container'),
-                needs: getItems('needs-container'),
-                counters: { ...counters },
-                notes: document.getElementById('teacher-notes').value || (lang === 'es' ? 'Sin notas adicionales hoy.' : 'No additional notes today.')
-            };
+        if (res.status === 400 || res.status === 401 || res.status === 403) {
+            throw new Error('API key rejected: ' + msg);
         }
+        throw new Error(msg);
+    }
+}
 
-        // --- CHANGE API KEY ---
-        document.getElementById('change-key-btn').addEventListener('click', () => {
-            const currentKey = localStorage.getItem("GEMINI_API_KEY") || "";
-            const newKey = window.prompt("Enter your Gemini API Key:", currentKey);
-            
-            if (newKey !== null) { // User didn't click Cancel
-                if (newKey.trim() === "") {
-                    localStorage.removeItem("GEMINI_API_KEY");
-                    showMessage("API Key removed. Will attempt to use default environment key.", "msg-info");
-                } else {
-                    localStorage.setItem("GEMINI_API_KEY", newKey.trim());
-                    showMessage("API Key saved securely in your browser!", "msg-success");
-                }
-            }
-        });
+$('polish-btn').addEventListener('click', async function () {
+    readInputs();
+    var data = buildData();
+    var rough = state.notes.trim();
+    var btn = $('polish-btn');
 
-        // --- CLEAR FORM ---
-        document.getElementById('clear-btn').addEventListener('click', () => {
-            document.querySelectorAll('.selection-btn').forEach(btn => btn.classList.remove('selected'));
-            counters = { wet: 0, bm: 0, dry: 0 };
-            document.getElementById('count-wet').innerText = '0';
-            document.getElementById('count-bm').innerText = '0';
-            document.getElementById('count-dry').innerText = '0';
-            document.getElementById('teacher-notes').value = '';
-            document.getElementById('student-name').value = '';
-            document.getElementById('log-date').valueAsDate = new Date();
-            showMessage('Form cleared.', 'msg-info');
-        });
+    var anySelected = SECTIONS.some(function (s) { return state.sel[s.key].length > 0; });
+    if (!rough && !anySelected) {
+        toast('Select some options or jot a note first.', 'msg-error');
+        return;
+    }
 
-        // --- API CALLER (AI Features) ---
-        async function callGeminiAPI(promptText, systemInstruction) {
-            let apiKey;
-            try {
-                // Vite might inject environment variables depending on configuration, 
-                // but in a raw inline script, 'process' is not defined.
-                apiKey = process.env.GEMINI_API_KEY;
-            } catch (e) {
-                apiKey = null;
-            }
-            
-            // Fallback for static hosting (like GitHub Pages) so your key isn't hardcoded
-            if (!apiKey || apiKey === "undefined" || apiKey.includes("process.env")) {
-                apiKey = localStorage.getItem("GEMINI_API_KEY");
-                if (!apiKey) {
-                    apiKey = window.prompt("Please enter your Gemini API Key (stored locally):");
-                    if (apiKey) localStorage.setItem("GEMINI_API_KEY", apiKey);
-                }
-            }
-            
-            if (!apiKey) {
-                throw new Error("Gemini API key is required to use AI features.");
-            }
-
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            
-            const payload = {
-                contents: [{ parts: [{ text: promptText }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
-            };
-
-            let delay = 1000;
-            for (let i = 0; i < 5; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    if (!response.ok) {
-                        const err = await response.json();
-                        throw new Error(err.error?.message || `HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-                    return data.candidates[0].content.parts[0].text.trim();
-                } catch (error) {
-                    console.error("API Attempt failed:", error);
-                    if (i === 4) throw error;
-                    await new Promise(r => setTimeout(r, delay));
-                    delay *= 2;
-                }
-            }
+    var ctx = 'Student: ' + data.name + '\n';
+    SECTIONS.forEach(function (s) {
+        var picked = data.groups[s.key];
+        if (picked.length) {
+            ctx += s.title.replace(/…$/, '') + ': ' +
+                   picked.map(function (i) { return i.text; }).join(', ') + '\n';
         }
+    });
+    ctx += 'Care counts — wet: ' + data.counters.wet + ', BM: ' + data.counters.bm + ', dry: ' + data.counters.dry + '\n';
 
-        // --- AI POLISH NOTE ---
-        document.getElementById('polish-ai-btn').addEventListener('click', async () => {
-            const data = getSelectedData();
-            const notesInput = document.getElementById('teacher-notes');
-            const roughNotes = notesInput.value.trim();
-            const btnText = document.getElementById('ai-btn-text');
-            const aiBtn = document.getElementById('polish-ai-btn');
-            
-            if (!roughNotes && data.felt.length===0 && data.workedOn.length===0 && data.wentTo.length===0) {
-                showMessage("Please select some options or write notes to summarize!", "msg-error");
-                return;
-            }
+    var outLang = data.lang === 'es' ? 'Spanish' : 'English';
+    var prompt = 'Write the parent-facing summary.\n\nToday’s selections:\n' + ctx +
+                 '\nTeacher’s rough notes:\n"' + (rough || 'No additional notes provided.') + '"';
 
-            let contextText = `Student Name: ${data.name}\n`;
-            if (data.felt.length) contextText += `Felt: ${data.felt.map(i=>i.text).join(', ')}\n`;
-            if (data.workedOn.length) contextText += `Worked on: ${data.workedOn.map(i=>i.text).join(', ')}\n`;
-            if (data.wentTo.length) contextText += `Went to: ${data.wentTo.map(i=>i.text).join(', ')}\n`;
-            if (data.saw.length) contextText += `Saw: ${data.saw.map(i=>i.text).join(', ')}\n`;
-            if (data.lunch.length) contextText += `Lunch: ${data.lunch.map(i=>i.text).join(', ')}\n`;
-            contextText += `Bathroom: Wet: ${data.counters.wet}, BM: ${data.counters.bm}, Dry: ${data.counters.dry}\n`;
-            if (data.needs.length) contextText += `Needs: ${data.needs.map(i=>i.text).join(', ')}\n`;
+    var sys = 'You are a special education teacher writing a daily note home. ' +
+        'Write ONE clear, objective paragraph of 3-5 sentences in ' + outLang + '.\n' +
+        'RULES:\n' +
+        '- Objective and professional. No flowery or overly emotional language.\n' +
+        '- Do NOT write narrative sentences about potty training, bathroom success, or "managing routines". ' +
+        'These students do not toilet independently. Care counts are already tabulated on the form — leave them out of the narrative.\n' +
+        '- Weave the selected activities, therapies and special events together with the teacher’s rough notes.\n' +
+        '- Restate difficult behavior as a neutral, constructive observation.\n' +
+        '- Output ONLY the paragraph. No preamble, no heading, no quotation marks.';
 
-            const prompt = `Please write an objective, parent-friendly summary note based on today's selections and the teacher's rough notes.\n\nToday's Selections:\n${contextText}\n\nTeacher's rough notes:\n"${roughNotes || 'No additional notes provided.'}"`;
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader"></span> Polishing…';
+        var out = await callGemini(prompt, sys);
+        $('teacher-notes').value = out;
+        queueSave();
+        toast('Note written.', 'msg-success');
+    } catch (err) {
+        toast(err.message || 'Could not generate the note.', 'msg-error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '✨ Polish Notes';
+    }
+});
 
-            // Updated System Instruction for Objective, Non-Toileting Narratives
-            const sysInstruction = `You are a professional special education teacher. Write a clear, objective, and concise paragraph (3-5 sentences max) summarizing the student's day for their parents. 
-            
-            CRITICAL INSTRUCTIONS:
-            - Maintain a clean, objective, and professional tone. Avoid overly emotional or flowery language.
-            - DO NOT write narrative sentences about "potty training", "bathroom success", or "managing routines". These students do not toilet independently. Simply state the factual numbers (e.g., "Care provided today: 1 wet, 1 BM.") or leave bathroom data out of the narrative entirely since it is tracked elsewhere on the form.
-            - Seamlessly integrate the selected activities, therapies, and the teacher's rough notes.
-            - Soften negative behaviors into objective, constructive observations.
-            - Output ONLY the polished paragraph, with no introductory filler.`;
+$('translate-btn').addEventListener('click', async function () {
+    var ta = $('teacher-notes');
+    var text = ta.value.trim();
+    var btn = $('translate-btn');
+    if (!text) { toast('Nothing to translate yet.', 'msg-error'); return; }
 
-            try {
-                aiBtn.disabled = true;
-                aiBtn.classList.add('opacity-75');
-                btnText.innerHTML = '<div class="loader loader-sm"></div> Polishing...';
-                
-                const response = await callGeminiAPI(prompt, sysInstruction);
-                notesInput.value = response;
-                showMessage("Notes generated successfully!", "msg-success");
-            } catch (error) {
-                console.error("Polish Note Error:", error);
-                showMessage(error.message || "Failed to generate notes.", "msg-error");
-            } finally {
-                aiBtn.disabled = false;
-                aiBtn.classList.remove('opacity-75');
-                btnText.innerText = '✨ Polish Notes';
-            }
+    var target = $('translate-lang').value === 'es' ? 'Spanish' : 'English';
+    var original = btn.innerHTML;
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader loader-dark"></span>';
+        var out = await callGemini(
+            'Translate the following text to ' + target + ':\n\n' + text,
+            'You are a professional translator for school-to-home communication. Translate accurately and keep the ' +
+            'professional tone. Output ONLY the translation — no quotes, no commentary.'
+        );
+        ta.value = out;
+        queueSave();
+        toast('Translated to ' + target + '.', 'msg-success');
+    } catch (err) {
+        toast(err.message || 'Could not translate.', 'msg-error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+});
+
+/* =========================================================================
+   12. REPORT DATA
+   ========================================================================= */
+function buildData() {
+    readInputs();
+    var lang = $('language-select').value;
+    var t = T[lang];
+    var groups = {};
+    SECTIONS.forEach(function (s) {
+        groups[s.key] = state.sel[s.key].map(function (id) { return findItem(s.key, id); })
+            .filter(Boolean)
+            .map(function (it) { return { emoji: it.emoji, text: lang === 'es' ? (it.es || it.en) : it.en }; });
+    });
+    return {
+        lang: lang,
+        t: t,
+        name: state.name.trim() || (lang === 'es' ? 'Estudiante' : 'Student'),
+        rawDate: state.date,
+        date: prettyDate(state.date, lang),
+        groups: groups,
+        counters: { wet: state.counters.wet, bm: state.counters.bm, dry: state.counters.dry },
+        notes: state.notes.trim() || (lang === 'es' ? 'Sin notas adicionales hoy.' : 'No additional notes today.')
+    };
+}
+
+/* =========================================================================
+   13. PRINT  —  vector PDF via the browser's own print pipeline.
+   Replaces html2pdf/html2canvas, which shipped a ~600 KB JPEG screenshot
+   with no selectable text.
+   ========================================================================= */
+function pills(items, noneLabel, cls) {
+    if (!items.length) return '<div class="' + (cls === 'g-pill' ? 'g-none' : 'p-none') + '">' + esc(noneLabel) + '</div>';
+    return items.map(function (i) {
+        return '<span class="' + cls + '"><span class="p-emoji">' + esc(i.emoji) + '</span> ' + esc(i.text) + '</span>';
+    }).join('');
+}
+
+function section(title, items, noneLabel) {
+    return '<div class="p-sec"><h2>' + esc(title) + '</h2>' + pills(items, noneLabel, 'p-pill') + '</div>';
+}
+
+function standardHTML(d) {
+    var t = d.t;
+    var care =
+        '<div class="p-sec"><h2>' + esc(t.bathroom) + '</h2>' +
+            '<table class="p-care">' +
+                '<tr><td class="k">' + esc(t.wet) + '</td><td class="v">' + d.counters.wet + '</td></tr>' +
+                '<tr><td class="k">' + esc(t.bm)  + '</td><td class="v">' + d.counters.bm  + '</td></tr>' +
+                '<tr><td class="k">' + esc(t.dry) + '</td><td class="v">' + d.counters.dry + '</td></tr>' +
+            '</table>' +
+        '</div>';
+
+    return '<div class="p-doc">' +
+        '<div class="p-head">' +
+            '<div class="p-kicker">' + esc(t.docTitle) + '</div>' +
+            '<h1>' + esc(d.name) + '</h1>' +
+            '<div class="p-sub">' + esc(d.date) + '</div>' +
+        '</div>' +
+        '<div class="p-cols">' +
+            section(t.felt,     d.groups.felt,     t.none) +
+            section(t.workedOn, d.groups.workedOn, t.none) +
+            section(t.wentTo,   d.groups.wentTo,   t.none) +
+            section(t.saw,      d.groups.saw,      t.none) +
+            section(t.lunch,    d.groups.lunch,    t.none) +
+            (d.groups.events.length ? section(t.events, d.groups.events, t.none) : '') +
+            care +
+            section(t.needs, d.groups.needs, t.none) +
+        '</div>' +
+        '<div class="p-sec" style="margin-top:6pt">' +
+            '<h2>' + esc(t.notes) + '</h2>' +
+            '<div class="p-notes">' + esc(d.notes) + '</div>' +
+        '</div>' +
+        '<div class="p-foot">' + esc(t.thankYou) + '</div>' +
+    '</div>';
+}
+
+function gbox(title, body, bg, border, color) {
+    return '<div class="g-box" style="background:' + bg + ';border-color:' + border + '">' +
+        '<h2 style="color:' + color + '">' + esc(title) + '</h2>' + body + '</div>';
+}
+
+function infographicHTML(d) {
+    var t = d.t;
+    var title = d.lang === 'es' ? t.dayOf + d.name + '!' : d.name + t.dayOf;
+    var activities = d.groups.workedOn.concat(d.groups.wentTo);
+
+    var careBody =
+        '<div class="g-stats">' +
+            '<div class="g-stat"><div class="n" style="color:#2563eb">' + d.counters.wet + '</div><div class="l">' + esc(t.wet) + '</div></div>' +
+            '<div class="g-stat"><div class="n" style="color:#7c3aed">' + d.counters.bm  + '</div><div class="l">' + esc(t.bm)  + '</div></div>' +
+            '<div class="g-stat"><div class="n" style="color:#059669">' + d.counters.dry + '</div><div class="l">' + esc(t.dry) + '</div></div>' +
+        '</div>' +
+        '<h2 style="color:#7e22ce;font-size:8pt">' + esc(t.weNeed) + '</h2>' +
+        pills(d.groups.needs, t.none, 'g-pill');
+
+    var left =
+        gbox(t.howIFelt,   pills(d.groups.felt, t.none, 'g-pill'),  '#fef9c3', '#fde68a', '#b45309') +
+        gbox(t.activities, pills(activities, t.none, 'g-pill'),     '#e0f2fe', '#bae6fd', '#0369a1') +
+        gbox(t.lunchTitle, pills(d.groups.lunch, t.none, 'g-pill'), '#ffedd5', '#fed7aa', '#c2410c');
+
+    var right =
+        gbox(t.therapies, pills(d.groups.saw, t.none, 'g-pill'), '#dcfce7', '#bbf7d0', '#15803d') +
+        (d.groups.events.length
+            ? gbox(t.eventsTitle, pills(d.groups.events, t.none, 'g-pill'), '#ffe4e6', '#fecdd3', '#be123c')
+            : '') +
+        gbox(t.personalCare, careBody, '#f3e8ff', '#e9d5ff', '#7e22ce');
+
+    return '<div class="p-doc">' +
+        '<div class="g-head"><h1>' + esc(title) + '</h1><p>' + esc(d.date) + '</p></div>' +
+        '<div class="g-grid">' +
+            '<div style="display:grid;gap:11pt;align-content:start">' + left + '</div>' +
+            '<div style="display:grid;gap:11pt;align-content:start">' + right + '</div>' +
+        '</div>' +
+        '<div class="g-notes"><h2>' + esc(t.notesTitle) + '</h2><p>' + esc(d.notes) + '</p></div>' +
+        '<div class="g-foot">' + esc(t.thankYou) + '</div>' +
+    '</div>';
+}
+
+/* The browser's Save-as-PDF dialog pre-fills its filename from document.title,
+   so swap the title for the duration of the print to keep the old naming. */
+var APP_TITLE = document.title;   // captured once, so back-to-back prints can't chain a stale title
+
+function printDoc(html, filename) {
+    var root = $('print-root');
+    root.innerHTML = html;
+    document.title = filename;
+
+    var restored = false;
+    function restore() {
+        if (restored) return;
+        restored = true;
+        document.title = APP_TITLE;
+        root.innerHTML = '';
+        window.removeEventListener('afterprint', restore);
+    }
+    window.addEventListener('afterprint', restore);
+
+    setTimeout(function () {
+        window.print();
+        setTimeout(restore, 1500); // Safari/iOS do not always fire afterprint
+    }, 60);
+}
+
+/* Ctrl+P straight from the page should still produce a report, not a blank sheet. */
+var autoFilled = false;
+window.addEventListener('beforeprint', function () {
+    var root = $('print-root');
+    if (!root.innerHTML) { root.innerHTML = standardHTML(buildData()); autoFilled = true; }
+});
+window.addEventListener('afterprint', function () {
+    if (autoFilled) { $('print-root').innerHTML = ''; autoFilled = false; }
+});
+
+function markPrinted() {
+    if (!slug(state.name)) return;
+    done[draftKey(state.name, state.date)] = true;
+    save(K_DONE, done);
+    renderRoster();
+}
+
+$('print-report-btn').addEventListener('click', function () {
+    var d = buildData();
+    printDoc(standardHTML(d), 'Daily_Report_' + d.name.replace(/\s+/g, '_') + '_' + d.rawDate);
+    markPrinted();
+});
+
+$('print-info-btn').addEventListener('click', function () {
+    var d = buildData();
+    printDoc(infographicHTML(d), 'Infographic_' + d.name.replace(/\s+/g, '_') + '_' + d.rawDate);
+    markPrinted();
+});
+
+/* =========================================================================
+   14. WIRING
+   ========================================================================= */
+$('customize-btn').addEventListener('click', function () {
+    customizing = !customizing;
+    document.body.classList.toggle('customizing', customizing);
+    this.classList.toggle('on', customizing);
+    this.innerHTML = customizing ? '✓ Done' : '✎ Customize';
+    renderAllGrids();
+    if (customizing) toast('Add or remove icons, then tap Done.', 'msg-info');
+});
+
+$('student-name').addEventListener('change', commitName);
+$('student-name').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); this.blur(); addToRoster(this.value); }
+});
+$('teacher-notes').addEventListener('input', queueSave);
+$('save-roster-btn').addEventListener('click', function () { addToRoster($('student-name').value); });
+
+$('log-date').addEventListener('change', function () {
+    saveDraft();
+    var newDate = this.value || todayISO();
+    state = loadDraft(state.name, newDate);
+    applyState();
+});
+
+$('language-select').addEventListener('change', function () { save(K_LANG, this.value); });
+
+$('clear-btn').addEventListener('click', function () {
+    confirmDialog('Clear this day?',
+        'Everything selected for ' + (state.name.trim() || 'this student') + ' on this date will be wiped. The name and date stay.',
+        'Clear it', function () {
+            var name = state.name, date = state.date;
+            delete drafts[draftKey(name, date)];
+            delete done[draftKey(name, date)];
+            save(K_DRAFTS, drafts);
+            save(K_DONE, done);
+            state = blankState();
+            state.name = name;
+            state.date = date;
+            applyState();
+            toast('Cleared.', 'msg-info');
         });
+});
 
-        // --- AI TRANSLATE NOTE ---
-        document.getElementById('translate-btn').addEventListener('click', async () => {
-            const notesInput = document.getElementById('teacher-notes');
-            const notesText = notesInput.value.trim();
-            const targetLang = document.getElementById('translate-lang').value;
-            const btn = document.getElementById('translate-btn');
-            const originalHtml = btn.innerHTML;
-            
-            if (!notesText) {
-                showMessage("Please enter some notes to translate first.", "msg-error");
-                return;
-            }
+window.addEventListener('beforeunload', function () {
+    // Adopt an un-committed name so a tab closed mid-entry still files the work.
+    var typed = $('student-name').value.trim();
+    if (!slug(state.name) && typed) state.name = typed;
+    saveDraft();
+});
 
-            const langName = targetLang === 'es' ? 'Spanish' : 'English';
-            const prompt = `Translate the following text to ${langName}:\n\n${notesText}`;
-            const sysInstruction = "You are a professional translator. Translate the provided text accurately while maintaining its professional tone. Output ONLY the translated text without any conversational filler or quotes around it.";
+/* =========================================================================
+   15. INIT
+   ========================================================================= */
+(function init() {
+    pruneOldData();
+    buildShell();
 
-            try {
-                btn.disabled = true;
-                btn.innerHTML = '<div class="loader loader-sm"></div>';
-                
-                const response = await callGeminiAPI(prompt, sysInstruction);
-                notesInput.value = response;
-                showMessage(`Translated to ${langName}!`, "msg-success");
-            } catch (error) {
-                console.error("Translation Error:", error);
-                showMessage(error.message || "Failed to translate note.", "msg-error");
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            }
-        });
+    var savedLang = load(K_LANG, 'en');
+    $('language-select').value = savedLang === 'es' ? 'es' : 'en';
+    $('translate-lang').value = savedLang === 'es' ? 'es' : 'en';
 
-        // --- STANDARD PDF ---
-        document.getElementById('pdf-btn').addEventListener('click', async () => {
-            const pdfBtn = document.getElementById('pdf-btn');
-            const originalBtnText = pdfBtn.innerHTML;
-            pdfBtn.innerHTML = '<div class="loader loader-sm"></div> Formatting...';
-            pdfBtn.disabled = true;
-            window.scrollTo(0, 0);
+    // Come back after an accidental refresh and land exactly where you were.
+    var last = load('dcl.last', null);
+    if (last && last.date === todayISO() && last.name) state = loadDraft(last.name, last.date);
+    else { state = blankState(); }
 
-            const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.98); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            overlay.innerHTML = `
-                <div class="loader" style="width: 50px; height: 50px; border-width: 5px; margin-bottom: 20px;"></div>
-                <h2 style="font-size: 24px; font-weight: bold; color: #1f2937; font-family: sans-serif;">Formatting Standard PDF...</h2>
-            `;
-            document.body.appendChild(overlay);
-            await new Promise(r => setTimeout(r, 50)); 
+    applyState();
+})();
 
-            try {
-                const pdfLanguage = document.getElementById('language-select').value;
-                const appContainer = document.getElementById('app-container');
-                
-                appContainer.querySelectorAll('input, textarea').forEach(el => {
-                    el.setAttribute('value', el.value);
-                });
+})();
+</script>
 
-                const clone = appContainer.cloneNode(true);
-                clone.id = 'pdf-clone';
-                clone.style.backgroundColor = '#ffffff';
-                clone.style.padding = '10px'; 
-                clone.style.maxWidth = '800px';
-                clone.style.margin = '0 auto';
-                
-                clone.querySelectorAll('.category-card').forEach(card => {
-                    card.style.pageBreakInside = 'avoid';
-                    card.style.breakInside = 'avoid';
-                    card.style.padding = '0.75rem';
-                    card.style.marginBottom = '0.5rem';
-                    card.style.boxShadow = 'none';
-                    card.style.border = '1px solid #e5e7eb';
-                });
-
-                // Reduce title sizes
-                clone.querySelectorAll('h1.text-3xl').forEach(title => {
-                    title.classList.remove('text-3xl');
-                    title.classList.add('text-2xl');
-                });
-                clone.querySelectorAll('h2.text-xl').forEach(title => {
-                    title.classList.remove('text-xl', 'mb-4', 'pb-2');
-                    title.classList.add('text-lg', 'mb-2', 'pb-1');
-                });
-                clone.querySelectorAll('p.mt-1').forEach(p => p.remove()); // remove subtitle
-
-                // Reduce gaps
-                clone.querySelectorAll('.gap-8').forEach(grid => {
-                    grid.classList.remove('gap-8');
-                    grid.classList.add('gap-4');
-                });
-                clone.querySelectorAll('.gap-4').forEach(grid => {
-                    grid.classList.remove('gap-4');
-                    grid.classList.add('gap-2');
-                });
-                clone.querySelectorAll('.gap-3').forEach(grid => {
-                    grid.classList.remove('gap-3');
-                    grid.classList.add('gap-1');
-                });
-
-                const headerRight = clone.querySelector('#header-controls');
-                if (headerRight) headerRight.remove();
-
-                clone.querySelectorAll('.selection-btn').forEach(btn => {
-                    if (!btn.classList.contains('selected')) {
-                        btn.remove();
-                    } else {
-                        btn.className = 'selection-btn selected border-blue-500 bg-blue-50 flex-row gap-2 min-h-0';
-                        btn.style.padding = '0.25rem 0.5rem';
-                        const emoji = btn.querySelector('.btn-emoji');
-                        if (emoji) {
-                            emoji.style.fontSize = '1.25rem';
-                            emoji.style.marginBottom = '0';
-                        }
-                        const text = btn.querySelector('.btn-text');
-                        if (text) {
-                            text.style.fontSize = '0.75rem'; // smaller text
-                        }
-                    }
-                });
-
-                const containerIds = ['felt-container', 'worked-on-container', 'went-to-container', 'saw-container', 'lunch-container', 'needs-container'];
-                containerIds.forEach(id => {
-                    const container = clone.querySelector(`#${id}`);
-                    if (container && container.children.length === 0) {
-                        container.innerHTML = `<div class="text-gray-400 italic col-span-full">${pdfLanguage === 'es' ? 'Ninguno' : 'None'}</div>`;
-                    }
-                });
-
-                const nameInput = clone.querySelector('#student-name');
-                if (nameInput) {
-                    const val = nameInput.value || (pdfLanguage === 'es' ? 'Estudiante' : 'Student');
-                    nameInput.outerHTML = `<div class="font-bold text-lg border-b-2 border-gray-200 pb-1 mt-1 text-gray-800">${val}</div>`;
-                }
-                const dateInput = clone.querySelector('#log-date');
-                if (dateInput) {
-                    let displayDate = "";
-                    if (dateInput.value) {
-                        const d = new Date(dateInput.value + 'T12:00:00');
-                        displayDate = d.toLocaleDateString(pdfLanguage === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                    }
-                    dateInput.outerHTML = `<div class="font-bold text-lg border-b-2 border-gray-200 pb-1 mt-1 text-gray-800">${displayDate}</div>`;
-                }
-
-                clone.querySelectorAll('button[onclick^="updateCounter"]').forEach(btn => btn.remove());
-
-                const aiTools = clone.querySelector('#ai-tools-container');
-                if (aiTools) aiTools.remove();
-                const aiHelp = clone.querySelector('#ai-help-text');
-                if (aiHelp) aiHelp.remove();
-                
-                const notesArea = clone.querySelector('#teacher-notes');
-                if (notesArea) {
-                    const val = notesArea.value || (pdfLanguage === 'es' ? 'Sin notas adicionales.' : 'No additional notes.');
-                    notesArea.outerHTML = `<div class="bg-gray-50 p-3 rounded-lg border border-gray-200 min-h-[60px] text-gray-800 whitespace-pre-wrap text-sm">${val}</div>`;
-                }
-
-                if (pdfLanguage === 'es') {
-                    const dict = {
-                        "Daily Communication Log": "Reporte Diario de Comunicación",
-                        "Select activities and behaviors to generate a report.": "Resumen de las actividades de hoy.",
-                        "Student Information": "Información del Estudiante",
-                        "Student Name": "Nombre del Estudiante",
-                        "Date": "Fecha",
-                        "Today I felt...": "Hoy me sentí...",
-                        "Today I worked on...": "Hoy trabajé en...",
-                        "Today I went to...": "Hoy fui a...",
-                        "Today I saw...": "Hoy vi a...",
-                        "For lunch, I...": "En el almuerzo, yo...",
-                        "Care & Needs": "Cuidado y Necesidades",
-                        "Bathroom": "Baño",
-                        "Needs": "Necesidades",
-                        "Wet:": "Mojado:",
-                        "BM:": "Evac.:",
-                        "Dry:": "Seco:",
-                        "Teacher's Note": "Notas del Maestro(a)"
-                    };
-                    
-                    const textNodesWalker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT, null, false);
-                    let textNode;
-                    while (textNode = textNodesWalker.nextNode()) {
-                        const txt = textNode.nodeValue.trim();
-                        if (dict[txt]) {
-                            textNode.nodeValue = textNode.nodeValue.replace(txt, dict[txt]);
-                        }
-                    }
-                    
-                    clone.querySelectorAll('.selection-btn.selected').forEach(btn => {
-                        const textSpan = btn.querySelector('.btn-text');
-                        if (textSpan) {
-                            const cat = btn.dataset.category;
-                            const id = btn.dataset.id;
-                            const item = categories[cat]?.find(c => c.id === id);
-                            if (item && item.es) {
-                                textSpan.innerText = item.es;
-                            }
-                        }
-                    });
-                }
-
-                appContainer.style.display = 'none';
-                document.getElementById('action-buttons').style.display = 'none';
-                document.body.appendChild(clone);
-
-                await new Promise(r => setTimeout(r, 200));
-
-                const studentName = document.getElementById('student-name').value || "Student";
-                const logDateInput = document.getElementById('log-date').value || "Date";
-                const opt = {
-                    margin:       [0.3, 0.4],
-                    filename:     `Daily_Report_${studentName.replace(/ /g, '_')}_${logDateInput}.pdf`,
-                    image:        { type: 'jpeg', quality: 1 },
-                    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-                    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-                };
-
-                await html2pdf().set(opt).from(clone).save();
-                
-                document.body.removeChild(clone);
-                appContainer.style.display = 'block';
-                document.getElementById('action-buttons').style.display = 'grid';
-                
-                showMessage("PDF generated successfully!", "msg-success");
-                
-            } catch (error) {
-                console.error(error);
-                showMessage("Failed to generate PDF.", "msg-error");
-            } finally {
-                if(document.body.contains(overlay)) document.body.removeChild(overlay);
-                pdfBtn.innerHTML = originalBtnText;
-                pdfBtn.disabled = false;
-            }
-        });
-
-        // --- BULLETPROOF US-LETTER INFOGRAPHIC (TABLE LAYOUT ENGINE) ---
-        // This version entirely abandons floats, flexbox, and divs for layout.
-        // It uses HTML tables, which html2canvas parses with 100% mathematical accuracy.
-        // It strictly enforces the US Letter aspect ratio and dimensions.
-        document.getElementById('infographic-btn').addEventListener('click', async () => {
-            const infoBtn = document.getElementById('infographic-btn');
-            const originalBtnText = infoBtn.innerHTML;
-            infoBtn.innerHTML = '<div class="loader loader-sm text-white border-white"></div> Painting...';
-            infoBtn.disabled = true;
-
-            // Overlay hides the off-screen rendering element
-            const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.98); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;';
-            overlay.innerHTML = `
-                <div class="loader" style="width: 50px; height: 50px; border-width: 5px; margin-bottom: 20px; border-top-color: #8b5cf6;"></div>
-                <h2 style="font-size: 24px; font-weight: bold; background: -webkit-linear-gradient(left, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-family: sans-serif;">Designing US Letter Infographic...</h2>
-            `;
-            document.body.appendChild(overlay);
-
-            await new Promise(r => setTimeout(r, 100));
-
-            try {
-                window.scrollTo(0, 0);
-
-                const data = getSelectedData();
-                const t = translations[data.lang];
-                
-                const renderItems = (items, emptyMsg) => {
-                    if (!items || items.length === 0) return `<div style="color: #9ca3af; font-style: italic; margin-bottom: 8px;">${emptyMsg}</div>`;
-                    return items.map(i => `
-                        <span style="display: inline-block; background: white; padding: 6px 14px; border-radius: 99px; margin: 0 6px 8px 0; border: 1px solid #d1d5db; white-space: nowrap;">
-                            <span style="font-size: 16px; vertical-align: middle;">${i.emoji}</span>
-                            <span style="font-weight: 600; color: #374151; font-size: 14px; margin-left: 4px; vertical-align: middle;">${i.text}</span>
-                        </span>
-                    `).join('');
-                };
-
-                const allActivities = [...data.workedOn, ...data.wentTo];
-                const headerTitle = data.lang === 'es' ? `${t.dayOf}${data.name}!` : `${data.name}${t.dayOf}`;
-                
-                // Bulletproof Table HTML
-                // 816px width is exactly 8.5 inches at 96dpi. This forces standard scale.
-                const html = `
-                    <div id="info-pdf-content" style="width: 816px; padding: 40px; font-family: Arial, Helvetica, sans-serif; background: #fafaf9; color: #1f2937; box-sizing: border-box; position: relative;">
-                        
-                        <!-- Header -->
-                        <div style="background: #3b82f6; border-radius: 20px; padding: 32px; text-align: center; color: white; margin-bottom: 24px;">
-                            <h1 style="font-size: 40px; font-weight: bold; margin: 0; letter-spacing: -1px;">${headerTitle}</h1>
-                            <p style="font-size: 18px; margin: 8px 0 0 0; font-weight: bold;">${data.date}</p>
-                        </div>
-
-                        <!-- STRICT TABLE LAYOUT -->
-                        <table style="width: 100%; border-collapse: separate; border-spacing: 24px 0; margin-left: -24px; table-layout: fixed;">
-                            <tr>
-                                <!-- Left Column -->
-                                <td style="width: 50%; vertical-align: top; padding: 0;">
-                                    
-                                    <div style="background: #fef3c7; border-radius: 16px; padding: 20px; border: 2px solid #fde68a; margin-bottom: 24px;">
-                                        <h2 style="font-size: 15px; font-weight: bold; color: #d97706; margin: 0 0 16px 0; text-transform: uppercase;">${t.howIFelt}</h2>
-                                        <div>${renderItems(data.felt, t.none)}</div>
-                                    </div>
-
-                                    <div style="background: #e0f2fe; border-radius: 16px; padding: 20px; border: 2px solid #bae6fd; margin-bottom: 24px;">
-                                        <h2 style="font-size: 15px; font-weight: bold; color: #0284c7; margin: 0 0 16px 0; text-transform: uppercase;">${t.activities}</h2>
-                                        <div>${renderItems(allActivities, t.none)}</div>
-                                    </div>
-                                    
-                                    <div style="background: #ffedd5; border-radius: 16px; padding: 20px; border: 2px solid #fed7aa;">
-                                        <h2 style="font-size: 15px; font-weight: bold; color: #c2410c; margin: 0 0 16px 0; text-transform: uppercase;">${t.lunchTitle}</h2>
-                                        <div>${renderItems(data.lunch, t.none)}</div>
-                                    </div>
-
-                                </td>
-
-                                <!-- Right Column -->
-                                <td style="width: 50%; vertical-align: top; padding: 0;">
-                                    
-                                    <div style="background: #dcfce7; border-radius: 16px; padding: 20px; border: 2px solid #bbf7d0; margin-bottom: 24px;">
-                                        <h2 style="font-size: 15px; font-weight: bold; color: #16a34a; margin: 0 0 16px 0; text-transform: uppercase;">${t.therapies}</h2>
-                                        <div>${renderItems(data.saw, t.none)}</div>
-                                    </div>
-
-                                    <div style="background: #f3e8ff; border-radius: 16px; padding: 20px; border: 2px solid #e9d5ff;">
-                                        <h2 style="font-size: 15px; font-weight: bold; color: #9333ea; margin: 0 0 16px 0; text-transform: uppercase;">${t.personalCare}</h2>
-                                        
-                                        <!-- Nested Table for Stats to prevent text overlap -->
-                                        <table style="width: 100%; background: white; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; text-align: center; border-collapse: collapse;">
-                                            <tr>
-                                                <td style="padding: 16px; width: 33%;">
-                                                    <div style="font-size: 26px; font-weight: bold; color: #3b82f6;">${data.counters.wet}</div>
-                                                    <div style="font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase;">${t.wet}</div>
-                                                </td>
-                                                <td style="padding: 16px; width: 33%;">
-                                                    <div style="font-size: 26px; font-weight: bold; color: #8b5cf6;">${data.counters.bm}</div>
-                                                    <div style="font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase;">${t.bm}</div>
-                                                </td>
-                                                <td style="padding: 16px; width: 34%;">
-                                                    <div style="font-size: 26px; font-weight: bold; color: #10b981;">${data.counters.dry}</div>
-                                                    <div style="font-size: 12px; font-weight: bold; color: #6b7280; text-transform: uppercase;">${t.dry}</div>
-                                                </td>
-                                            </tr>
-                                        </table>
-
-                                        <h3 style="font-size: 14px; font-weight: bold; color: #9333ea; margin: 0 0 12px 0; text-transform: uppercase;">${t.weNeed}</h3>
-                                        <div>${renderItems(data.needs, t.none)}</div>
-                                    </div>
-
-                                </td>
-                            </tr>
-                        </table>
-
-                        <!-- Teacher Notes -->
-                        <div style="background: white; border-radius: 16px; padding: 24px; border: 2px solid #e5e7eb; margin-top: 24px;">
-                            <h2 style="font-size: 15px; font-weight: bold; color: #4b5563; margin: 0 0 12px 0; text-transform: uppercase;">${t.notesTitle}</h2>
-                            <p style="font-size: 15px; line-height: 1.6; color: #374151; margin: 0; white-space: pre-wrap;">${data.notes}</p>
-                        </div>
-                        
-                        <div style="text-align: center; margin-top: 24px; font-weight: bold; color: #9ca3af; font-size: 14px;">
-                            ${t.thankYou}
-                        </div>
-                    </div>
-                `;
-
-                // Add to document, but place it completely behind the overlay so user doesn't see flash.
-                // Do NOT use display:none, otherwise html2canvas cannot calculate heights.
-                const wrapper = document.createElement('div');
-                wrapper.id = 'pdf-generation-wrapper';
-                wrapper.style.position = 'absolute'; 
-                wrapper.style.top = '0';
-                wrapper.style.left = '0';
-                wrapper.style.zIndex = '-1';
-                wrapper.style.opacity = '0.01'; // Practically invisible but mathematically present
-                wrapper.innerHTML = html;
-                document.body.appendChild(wrapper);
-
-                // Wait for styles/DOM to settle
-                await new Promise(r => setTimeout(r, 400)); 
-
-                const contentElement = document.getElementById('info-pdf-content');
-                const rawDateInput = document.getElementById('log-date').value || "Date";
-                
-                // EXPLICIT US LETTER CONFIGURATION
-                const opt = {
-                    margin:       [0.2, 0, 0.2, 0], // Top/Bottom margin, no side margin needed (handled by 816px container width)
-                    filename:     `Infographic_${data.name.replace(/ /g, '_')}_${rawDateInput}.pdf`,
-                    image:        { type: 'jpeg', quality: 1 },
-                    html2canvas:  { 
-                        scale: 2,           // High res rendering
-                        useCORS: true,      // Allow emojis
-                        width: 816,         // EXACT pixel width of US letter (8.5 * 96)
-                        windowWidth: 816,   // Prevent viewport resizing bugs
-                        letterRendering: true, // Fixes text squishing bugs
-                        scrollY: 0,
-                        logging: false
-                    },
-                    jsPDF: { 
-                        unit: 'in', 
-                        format: 'letter',   // STRICT US LETTER (8.5 x 11 in)
-                        orientation: 'portrait' 
-                    }
-                };
-
-                await html2pdf().set(opt).from(contentElement).save();
-                
-                // Cleanup
-                document.body.removeChild(wrapper);
-                showMessage("US Letter Infographic generated!", "msg-success");
-
-            } catch (error) {
-                console.error(error);
-                showMessage("Failed to generate Infographic.", "msg-error");
-                const wrapper = document.getElementById('pdf-generation-wrapper');
-                if (wrapper) document.body.removeChild(wrapper);
-            } finally {
-                if(document.body.contains(overlay)) document.body.removeChild(overlay);
-                infoBtn.innerHTML = originalBtnText;
-                infoBtn.disabled = false;
-            }
-        });
-
-    </script>
 </body>
 </html>
-
