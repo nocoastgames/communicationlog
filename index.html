@@ -1698,19 +1698,26 @@ async function downloadPDF(html, filename, label) {
     host.innerHTML = '<div id="pdf-page" style="width:816px;padding:40px;box-sizing:border-box;background:#fff">' + html + '</div>';
     document.body.appendChild(host);
 
+    // html2canvas measures the element against the live viewport. If the page is
+    // scrolled (it always is — the buttons sit at the bottom) the capture window
+    // lands in the wrong place and the document comes out shifted and cropped.
+    // Pin the page to the top for the capture, then put it back.
+    var keepScroll = window.scrollY;
+    window.scrollTo(0, 0);
+
     try {
         await new Promise(function (r) { setTimeout(r, 250); });   // let fonts/emoji settle
         await html2pdf().set({
-            margin:   [0.25, 0, 0.25, 0],
+            margin:   [0.2, 0, 0.2, 0],   // content has its own 40px inset; this keeps even a maxed-out day on one page
             filename: filename + '.pdf',
             image:    { type: 'jpeg', quality: 0.92 },
+            // No width/windowWidth/scroll overrides: the host is already exactly
+            // 816px, and forcing a window width reflows html2canvas's clone so its
+            // coordinates no longer match what it renders.
             html2canvas: {
                 scale: 2,                 // 816 * 2 across 8.5in ≈ 192dpi, crisp when printed
                 useCORS: true,
-                width: 816,
-                windowWidth: 816,
                 backgroundColor: '#ffffff',
-                scrollX: 0, scrollY: 0,
                 logging: false
             },
             jsPDF:     { unit: 'in', format: 'letter', orientation: 'portrait' },
@@ -1725,6 +1732,7 @@ async function downloadPDF(html, filename, label) {
     } finally {
         host.remove();
         overlay.remove();
+        window.scrollTo(0, keepScroll);
     }
 }
 
