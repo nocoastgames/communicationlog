@@ -329,6 +329,21 @@
 
         #save-state { font-size: .6875rem; font-weight: 600; color: #9ca3af; }
 
+        /* A note carried from another student stays flagged until it is edited. */
+        #teacher-notes.note-carried {
+            border-color: #f59e0b;
+            background: #fffbeb;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, .15);
+        }
+        #note-carried-hint { display: none; }
+        #teacher-notes.note-carried ~ #note-carried-hint {
+            display: block;
+            font-size: .75rem;
+            font-weight: 600;
+            color: #b45309;
+            margin-top: .375rem;
+        }
+
         /* =======================================================
            PRINT  —  real vector output, not a rasterised screenshot
            ======================================================= */
@@ -475,7 +490,7 @@
         </div>
         <label class="mt-2 flex items-center gap-2 text-xs font-semibold text-gray-500 cursor-pointer select-none">
             <input type="checkbox" id="carry-toggle" class="w-4 h-4 accent-blue-600">
-            Carry the day&rsquo;s activities over to the next student
+            Carry the day&rsquo;s activities and note over to the next student
         </label>
     </div>
 
@@ -518,6 +533,7 @@
             </div>
         </div>
         <textarea id="teacher-notes" class="field min-h-[130px] resize-y" placeholder="e.g. rough morning, settled after mat time, great job requesting with device"></textarea>
+        <p id="note-carried-hint">&#9888;&#65039; Reused from the previous student &mdash; edit it before you download.</p>
     </div>
 
     <!-- ============ ACTIONS ============ -->
@@ -880,9 +896,10 @@ var done    = load(K_DONE, {});
 var customizing = false;
 
 /* Which categories follow you to the next student. The class shares a schedule,
-   so activities/places/specialists/events repeat. Mood, lunch, supply requests,
-   bathroom counts and the note are per-child observations and never carry —
-   those are the ones that would put wrong information in a parent's hands. */
+   so activities/places/specialists/events repeat. The note carries too, as a
+   starting point to edit — it is flagged until you touch it, because it still
+   describes the previous student. Mood, lunch, supply requests and bathroom
+   counts never carry: those are per-child facts, not a draft to reuse. */
 var CARRY_KEYS = ['workedOn', 'wentTo', 'saw', 'events'];
 
 function blankState() {
@@ -891,7 +908,7 @@ function blankState() {
     return {
         name: '', date: todayISO(), sel: sel,
         counters: { wet: 0, bm: 0, dry: 0 }, notes: '',
-        carriedFrom: null, carriedCount: 0
+        carriedFrom: null, carriedCount: 0, carriedNote: false
     };
 }
 function carryEnabled() { return load(K_CARRY, true) !== false; }
@@ -1044,6 +1061,7 @@ function applyState() {
     $('student-name').value = state.name;
     $('log-date').value = state.date;
     $('teacher-notes').value = state.notes;
+    $('teacher-notes').classList.toggle('note-carried', !!state.carriedNote);
     renderCounters();
     renderAllGrids();
     renderRoster();
@@ -1168,7 +1186,11 @@ function switchStudent(name) {
                 carried += source.sel[k].length;
             }
         });
-        if (carried) {
+        if (source.notes && source.notes.trim()) {
+            state.notes = source.notes;
+            state.carriedNote = true;
+        }
+        if (carried || state.carriedNote) {
             state.carriedFrom = source.name;
             state.carriedCount = carried;
         }
@@ -1192,14 +1214,20 @@ function startBlank() {
 
 function renderCarryBanner() {
     var bar = $('carry-banner');
-    if (state.carriedFrom && state.carriedCount) {
-        $('carry-text').textContent =
-            'Carried ' + state.carriedCount + ' activit' + (state.carriedCount === 1 ? 'y' : 'ies') +
-            ' over from ' + state.carriedFrom + '. Mood, lunch, supplies and care counts stayed blank.';
-        bar.classList.remove('hidden');
-    } else {
+    if (!state.carriedFrom || (!state.carriedCount && !state.carriedNote)) {
         bar.classList.add('hidden');
+        return;
     }
+    var bits = [];
+    if (state.carriedCount) bits.push(state.carriedCount + ' activit' + (state.carriedCount === 1 ? 'y' : 'ies'));
+    if (state.carriedNote) bits.push('the note');
+
+    var msg = 'Carried ' + bits.join(' and ') + ' over from ' + state.carriedFrom + '. ';
+    msg += state.carriedNote
+        ? 'The note still describes ' + state.carriedFrom + ' — edit it before sending.'
+        : 'Mood, lunch, supplies and care counts stayed blank.';
+    $('carry-text').textContent = msg;
+    bar.classList.remove('hidden');
 }
 
 /* Fired when the name box loses focus or Enter is pressed — never per keystroke. */
@@ -1783,7 +1811,14 @@ $('student-name').addEventListener('change', commitName);
 $('student-name').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); this.blur(); addToRoster(this.value); }
 });
-$('teacher-notes').addEventListener('input', queueSave);
+$('teacher-notes').addEventListener('input', function () {
+    if (state.carriedNote) {          // the teacher has made it their own — drop the flag
+        state.carriedNote = false;
+        this.classList.remove('note-carried');
+        renderCarryBanner();
+    }
+    queueSave();
+});
 $('save-roster-btn').addEventListener('click', function () { addToRoster($('student-name').value); });
 
 $('log-date').addEventListener('change', function () {

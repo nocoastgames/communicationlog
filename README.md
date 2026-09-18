@@ -25,14 +25,20 @@ account. GitHub Pages serves that file directly.
 ## Carry-over between students
 
 The class shares a schedule, so switching to a student who has no log yet brings
-the previous student's **Worked on / Went to / Saw / Special events** with you.
-A banner says what carried, with **Start blank instead** to undo it.
+the previous student's **Worked on / Went to / Saw / Special events** along,
+plus the **teacher's note** as a starting point to edit. A banner says what
+carried, with **Start blank instead** to undo it.
 
-**Mood, lunch, send-from-home, bathroom counts and the teacher's note never
-carry.** Those are per-child observations, and copying them between students
-would put wrong information in a parent's hands.
+A carried note is flagged — amber border plus *"Reused from the previous
+student"* right above the download buttons — and stays flagged until you type
+in it. It still describes the previous student until you change it.
 
-Untick **Carry the day's activities over to the next student** to turn it off.
+**Mood, lunch, send-from-home and bathroom counts never carry.** Those are
+per-child facts rather than a draft to reuse, and copying them would put wrong
+information in a parent's hands.
+
+Untick **Carry the day's activities and note over to the next student** to turn
+the whole thing off.
 
 ## Customising the icons
 
