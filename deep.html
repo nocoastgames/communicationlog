@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Hydration Log</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --accent: #e11d6f;
+            --accent-soft: #fff1f5;
+            --morning: #fdeef0;
+            --afternoon: #e8eef5;
+            --ink: #111827;
+            --ink-soft: #6b7280;
+            --line: #e5e7eb;
+            --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+        }
+
+        body { font-family: 'Inter', system-ui, sans-serif; background: #f6f7f9; color: var(--ink); }
+
+        .card {
+            background: #fff; border: 1px solid var(--line); border-radius: 16px;
+            padding: 1.125rem 1.125rem 1.25rem; margin-bottom: 1rem;
+        }
+        .card-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: .75rem; margin-bottom: .875rem; flex-wrap: wrap;
+        }
+        .card-title { font-size: 1rem; font-weight: 700; letter-spacing: -.01em; display: flex; align-items: center; gap: .5rem; }
+        .card-title .ico { font-size: 1.125rem; font-family: var(--emoji); }
+
+        /* ---- time blocks ---- */
+        .block { border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: .875rem; }
+        .block-head {
+            display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+            padding: .625rem .875rem; font-weight: 800; font-size: .9375rem;
+        }
+        .block-head .when { font-weight: 600; font-size: .75rem; color: #6b7280; }
+        .block-body { padding: .875rem; display: grid; gap: .875rem; }
+        @media (min-width: 720px) { .block-body { grid-template-columns: 210px 1fr 1fr; } }
+
+        .amt-wrap { display: flex; align-items: center; gap: .5rem; }
+        .amt {
+            width: 92px; text-align: center; font-size: 1.375rem; font-weight: 800;
+            border: 1.5px solid var(--line); border-radius: 11px; padding: .375rem .25rem;
+            outline: none; color: var(--ink);
+        }
+        .amt:focus { border-color: var(--accent); }
+        .amt-unit { font-weight: 700; color: var(--ink-soft); font-size: .875rem; }
+
+        .quick { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem; }
+        .quick button {
+            padding: .25rem .5rem; border-radius: 99px; border: 1.5px solid var(--line);
+            background: #fff; font-size: .75rem; font-weight: 700; color: #475569; cursor: pointer;
+        }
+        .quick button:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+        .quick button.clear { color: #b91c1c; }
+
+        .lbl { display: block; font-size: .6875rem; font-weight: 800; color: #6b7280; margin-bottom: .25rem; text-transform: uppercase; letter-spacing: .05em; }
+
+        .field {
+            width: 100%; border: 1.5px solid var(--line); border-radius: 11px;
+            padding: .5rem .75rem; font-size: .9375rem; background: #fff;
+            outline: none; transition: border-color .15s; color: var(--ink);
+        }
+        .field:focus { border-color: var(--accent); }
+        textarea.field { min-height: 76px; resize: vertical; }
+
+        /* ---- daily total ---- */
+        .totalbar {
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+            border: 2px solid #fbcfe8; background: var(--accent-soft);
+            border-radius: 14px; padding: .875rem 1.125rem;
+        }
+        .totalbar .lab { font-weight: 800; font-size: .9375rem; }
+        .totalbar .val { font-size: 1.625rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+        .totalbar .goal { font-size: .8125rem; font-weight: 700; color: var(--ink-soft); }
+        .bar { height: 9px; background: #fce7f3; border-radius: 99px; overflow: hidden; flex: 1; min-width: 140px; }
+        .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .25s; }
+
+        /* ---- buttons ---- */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+            font-weight: 600; border-radius: 11px; padding: .5rem .875rem;
+            border: 1.5px solid transparent; cursor: pointer; transition: all .15s;
+            font-size: .875rem; white-space: nowrap;
+        }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-ghost { background: #fff; border-color: var(--line); color: #374151; }
+        .btn-ghost:hover:not(:disabled) { background: #f9fafb; border-color: #cbd5e1; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: #be185d; }
+        .btn-dark { background: var(--ink); color: #fff; }
+        .btn-dark:hover:not(:disabled) { background: #000; }
+        .btn-add { width: 100%; border-style: dashed; border-color: #cbd5e1; color: #475569; background: #fbfcfd; }
+        .btn-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+        .btn-lg { padding: .875rem 1.25rem; font-size: .9375rem; border-radius: 13px; }
+
+        /* ---- roster chips ---- */
+        .chip {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .4rem .75rem; border-radius: 99px; border: 1.5px solid var(--line);
+            background: #fff; font-size: .8125rem; font-weight: 600; color: #374151;
+            cursor: pointer; white-space: nowrap; transition: all .15s;
+        }
+        .chip:hover { border-color: #f9a8d4; }
+        .chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+        .chip .dot { width: 7px; height: 7px; border-radius: 99px; background: #d1d5db; flex: none; }
+        .chip.has-draft .dot { background: #f59e0b; }
+        .chip.done .dot { background: #10b981; }
+        .chip.active .dot { outline: 1.5px solid rgba(255,255,255,.45); }
+
+        /* ---- extra (optional) timed sections ---- */
+        .entries { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+        .entry { display: flex; align-items: flex-start; gap: .75rem; padding: .5rem .75rem; border-bottom: 1px solid #f3f4f6; font-size: .875rem; }
+        .entry:last-child { border-bottom: 0; }
+        .entry:nth-child(even) { background: #fcfcfd; }
+        .entry-time { font-weight: 700; font-variant-numeric: tabular-nums; width: 72px; flex: none; color: #374151; }
+        .entry-body { flex: 1; min-width: 0; }
+        .entry-main { font-weight: 600; }
+        .entry-sub { color: var(--ink-soft); font-size: .8125rem; margin-top: .0625rem; word-break: break-word; }
+        .entry-acts { display: flex; gap: .25rem; flex: none; }
+        .icon-btn { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; font-size: .8125rem; line-height: 1; color: #6b7280; }
+        .icon-btn:hover { background: #f9fafb; border-color: #cbd5e1; color: #111827; }
+        .icon-btn.danger:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+        .empty { padding: .875rem; text-align: center; color: #9ca3af; font-size: .8125rem; font-style: italic; }
+        .total {
+            font-size: .8125rem; font-weight: 700; color: var(--accent);
+            background: var(--accent-soft); border: 1px solid #fbcfe8;
+            border-radius: 99px; padding: .2rem .625rem; white-space: nowrap;
+        }
+        .total.none { color: #9ca3af; background: #f9fafb; border-color: var(--line); }
+
+        /* ---- toast / modal ---- */
+        #toast {
+            position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 12px);
+            padding: .75rem 1.25rem; border-radius: 11px; color: #fff; font-weight: 600;
+            font-size: .875rem; opacity: 0; transition: opacity .25s, transform .25s;
+            pointer-events: none; z-index: 200; max-width: 90vw; text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,.18);
+        }
+        #toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .msg-success { background: #059669; }
+        .msg-error   { background: #dc2626; }
+        .msg-info    { background: #374151; }
+
+        .modal-back { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center; justify-content: center; padding: 1rem; z-index: 300; }
+        .modal-back.open { display: flex; }
+        .modal { background: #fff; border-radius: 18px; width: 100%; max-width: 540px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+        .modal-head { padding: 1.125rem 1.25rem; border-bottom: 1px solid var(--line); }
+        .modal-body { padding: 1.25rem; overflow-y: auto; }
+        .modal-foot { padding: .875rem 1.25rem; border-top: 1px solid var(--line); display: flex; gap: .5rem; justify-content: flex-end; background: #fafafa; }
+
+        .loader { border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; width: 15px; height: 15px; animation: spin .8s linear infinite; display: inline-block; flex: none; }
+        .loader-dark { border-color: rgba(0,0,0,.15); border-top-color: var(--accent); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #save-state { font-size: .6875rem; font-weight: 600; color: #9ca3af; }
+
+        .tpl-row { display: flex; align-items: center; gap: .625rem; padding: .625rem .75rem; border: 1.5px solid var(--line); border-radius: 11px; margin-bottom: .5rem; cursor: pointer; }
+        .tpl-row:hover { border-color: #f9a8d4; }
+        .tpl-row.on { border-color: var(--accent); background: var(--accent-soft); }
+        .tpl-row .ico { font-size: 1.25rem; font-family: var(--emoji); flex: none; }
+        .tpl-row .nm { flex: 1; font-weight: 600; font-size: .875rem; }
+        .tpl-row .desc { font-size: .75rem; color: var(--ink-soft); font-weight: 400; }
+        .blk-edit { display: grid; grid-template-columns: 1fr 88px 88px 32px; gap: .375rem; margin-bottom: .375rem; align-items: center; }
+
+        /* =====================  PRINTED FORM  ===================== */
+        .f-doc { font-family: 'Inter', system-ui, sans-serif; color: #1f2937; font-size: 10.5pt; }
+        .f-emoji { font-family: var(--emoji); }
+        .f-title { text-align: center; margin-bottom: 10pt; }
+        .f-name {
+            font-family: 'Dancing Script', 'Segoe Script', cursive;
+            font-size: 30pt; color: #e8768f; line-height: 1; margin: 0 0 1pt;
+        }
+        .f-h1 { font-size: 25pt; font-weight: 800; letter-spacing: -.01em; margin: 0; color: #1f2937; }
+        .f-sub { font-size: 10.5pt; color: #4b5563; margin-top: 2pt; }
+
+        .f-info {
+            border: 1pt solid #d1d5db; border-radius: 7pt; padding: 7pt 10pt; margin-bottom: 9pt;
+            display: flex; justify-content: space-between; gap: 10pt; font-size: 10pt;
+        }
+        .f-info b { font-weight: 700; }
+        .f-info .v { color: #be3455; font-weight: 700; }
+
+        .f-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .f-tbl th {
+            border: 1pt solid #9ca3af; background: #f3f4f6; padding: 5pt 4pt;
+            font-size: 8.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+        }
+        .f-tbl td { border: 1pt solid #9ca3af; padding: 7pt 8pt; vertical-align: top; font-size: 10pt; }
+        .f-when { text-align: center; width: 20%; }
+        .f-when .nm { font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+        .f-when .hr { font-size: 8.5pt; color: #4b5563; margin-top: 2pt; }
+        .f-when .ic { font-size: 19pt; line-height: 1; margin-bottom: 2pt; font-family: var(--emoji); }
+        .f-water { width: 20%; text-align: center; font-size: 15pt; font-weight: 800; vertical-align: middle; }
+        .f-water .u { font-size: 9pt; font-weight: 700; color: #6b7280; }
+        .f-cell { white-space: pre-wrap; line-height: 1.45; }
+        .f-dim { color: #9ca3af; font-style: italic; }
+
+        .f-total {
+            border: 1.5pt solid #f3b9c8; border-radius: 8pt; background: #fff5f7;
+            padding: 8pt 12pt; margin-top: 9pt;
+            display: flex; justify-content: space-between; align-items: center; gap: 12pt;
+        }
+        .f-total .l { font-size: 11.5pt; font-weight: 800; }
+        .f-total .n { font-size: 15pt; font-weight: 800; color: #be3455; }
+        .f-total .g { font-size: 10pt; font-weight: 700; color: #6b7280; }
+
+        .f-notes { border: 1.5pt solid #f3b9c8; border-radius: 8pt; padding: 8pt 12pt; margin-top: 9pt; }
+        .f-notes .h { text-align: center; font-size: 10.5pt; font-weight: 800; color: #be3455; letter-spacing: .04em; text-transform: uppercase; }
+        .f-notes .hint { text-align: center; font-size: 8pt; color: #6b7280; margin-bottom: 5pt; }
+        .f-notes .body { font-size: 10pt; white-space: pre-wrap; line-height: 1.5; min-height: 34pt; }
+
+        .f-sign {
+            border: 1pt solid #d1d5db; border-radius: 7pt; padding: 7pt 12pt; margin-top: 9pt;
+            display: flex; justify-content: space-between; gap: 12pt; font-size: 10pt;
+        }
+        .f-foot { text-align: center; margin-top: 9pt; font-weight: 700; font-size: 10.5pt; color: #be3455; }
+
+        .f-sec { margin-top: 11pt; break-inside: avoid; page-break-inside: avoid; }
+        .f-sec h2 { font-size: 8.5pt; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin: 0 0 4pt; padding-bottom: 3pt; border-bottom: .75pt solid #d1d5db; }
+        .f-sec table { width: 100%; border-collapse: collapse; }
+        .f-sec td { border: .75pt solid #e5e7eb; padding: 3.5pt 6pt; font-size: 9.5pt; vertical-align: top; }
+        .f-sec .t { font-weight: 700; width: 58pt; white-space: nowrap; }
+        .f-sec .m { font-weight: 600; width: 34%; }
+        .f-sec .d { color: #4b5563; }
+    </style>
+</head>
+<body class="p-3 md:p-6">
+
+<div class="max-w-4xl mx-auto">
+
+    <div class="card">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-extrabold tracking-tight">Daily Hydration Log</h1>
+                <p class="text-sm text-gray-500 mt-0.5">
+                    For staff use and parent knowledge &mdash;
+                    <a href="index.html" class="font-semibold text-pink-700 hover:underline">back to the quick log</a>
+                </p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span id="save-state"></span>
+                <button id="template-btn" class="btn btn-ghost">&#9881;&#65039; Set up</button>
+                <button id="key-btn" class="btn btn-ghost" title="Gemini API key">&#128273;</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head" style="margin-bottom:.75rem">
+            <div class="card-title">Students</div>
+            <input type="date" id="log-date" class="field w-auto py-1.5 text-sm font-semibold">
+        </div>
+        <div id="roster-bar" class="flex flex-wrap gap-2 items-center"></div>
+        <div class="mt-3 pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label class="lbl">Completed by</label>
+                <input type="text" id="completed-by" class="field py-1.5 text-sm" placeholder="Your name" autocomplete="off">
+            </div>
+            <div>
+                <label class="lbl">Staff initials</label>
+                <input type="text" id="initials" class="field py-1.5 text-sm" placeholder="e.g. MR" maxlength="8" autocomplete="off">
+            </div>
+        </div>
+        <button id="enroll-btn" class="btn btn-ghost text-xs py-1.5 mt-3">&#43; Add a student to this log</button>
+    </div>
+
+    <div id="blocks"></div>
+
+    <div class="card" id="total-card">
+        <div class="totalbar">
+            <div class="lab"><span class="f-emoji">&#128167;</span> Daily total water intake</div>
+            <div class="bar"><i id="goal-bar" style="width:0%"></i></div>
+            <div><span class="val" id="day-total">0</span> <span class="goal" id="day-unit">oz</span></div>
+            <div class="goal" id="goal-text"></div>
+        </div>
+    </div>
+
+    <div id="extras"></div>
+
+    <div class="card">
+        <div class="card-head">
+            <div class="card-title"><span class="ico">&#128221;</span> General notes</div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <button id="translate-btn" class="btn btn-ghost text-xs py-1.5">Translate to ES</button>
+                <button id="polish-btn" class="btn btn-primary text-xs py-1.5">&#10024; Polish</button>
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mb-2">Energy level, mood, sleep, bowel movements, any concerns.</p>
+        <textarea id="notes" class="field" style="min-height:110px"></textarea>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5 mb-10">
+        <button id="clear-btn" class="btn btn-ghost btn-lg">&#128465;&#65039; Clear Day</button>
+        <button id="pdf-btn" class="btn btn-dark btn-lg">&#11015;&#65039; Download Log</button>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- set-up modal -->
+<div class="modal-back" id="template-modal">
+    <div class="modal">
+        <div class="modal-head">
+            <div class="text-lg font-bold">Set up</div>
+            <div class="text-sm text-gray-500" id="template-sub"></div>
+        </div>
+        <div class="modal-body">
+            <label class="lbl">Form title</label>
+            <input type="text" id="tpl-title" class="field py-2 text-sm mb-4" placeholder="Daily Hydration Log">
+
+            <label class="lbl">Time blocks</label>
+            <div id="tpl-blocks"></div>
+            <button id="tpl-add-block" class="btn btn-add text-xs py-1.5 mb-4">&#43; Add a block</button>
+
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                    <label class="lbl">Unit</label>
+                    <select id="tpl-unit" class="field py-2 text-sm">
+                        <option value="oz">oz</option>
+                        <option value="mL">mL</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="lbl">Daily goal (blank = none)</label>
+                    <input type="number" id="tpl-goal" class="field py-2 text-sm" min="0" step="1" placeholder="e.g. 24">
+                </div>
+            </div>
+
+            <label class="lbl">Also track (optional)</label>
+            <p class="text-xs text-gray-500 mb-2">Timed entries, printed under the main form. Leave off unless this student needs them.</p>
+            <div id="tpl-extras"></div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" id="template-save">Save set-up</button>
+        </div>
+    </div>
+</div>
+
+<!-- entry modal (optional timed sections) -->
+<div class="modal-back" id="entry-modal">
+    <div class="modal">
+        <div class="modal-head"><div class="text-lg font-bold" id="entry-title">Add entry</div></div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="lbl">Time</label>
+                <input type="time" id="entry-time" class="field">
+            </div>
+            <div id="entry-fields"></div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" id="entry-save">Save entry</button>
+        </div>
+    </div>
+</div>
+
+<!-- enroll modal -->
+<div class="modal-back" id="enroll-modal">
+    <div class="modal" style="max-width:420px">
+        <div class="modal-head">
+            <div class="text-lg font-bold">Add a student</div>
+            <div class="text-sm text-gray-500">Pick from your roster, or type a new name.</div>
+        </div>
+        <div class="modal-body">
+            <div id="enroll-list" class="flex flex-wrap gap-2 mb-3"></div>
+            <input type="text" id="enroll-name" class="field text-sm" placeholder="New student name" autocomplete="off">
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" id="enroll-save">Add</button>
+        </div>
+    </div>
+</div>
+
+<!-- api key modal -->
+<div class="modal-back" id="key-modal">
+    <div class="modal" style="max-width:420px">
+        <div class="modal-head">
+            <div class="text-lg font-bold">Gemini API key</div>
+            <div class="text-sm text-gray-500">Shared with the quick log. Stored only in this browser.</div>
+        </div>
+        <div class="modal-body">
+            <input type="password" id="key-input" class="field text-sm" placeholder="AIza&hellip;" autocomplete="off">
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-primary" id="key-save">Save key</button>
+        </div>
+    </div>
+</div>
+
+<!-- confirm modal -->
+<div class="modal-back" id="confirm-modal">
+    <div class="modal" style="max-width:400px">
+        <div class="modal-head">
+            <div class="text-lg font-bold" id="confirm-title">Are you sure?</div>
+            <div class="text-sm text-gray-500 mt-1" id="confirm-body"></div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close-modal>Cancel</button>
+            <button class="btn btn-dark" id="confirm-ok">Yes</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* =========================================================================
+   STORAGE  —  roster and API key are shared with the quick log (same origin)
+   ========================================================================= */
+var K_API    = 'GEMINI_API_KEY';
+var K_ROSTER = 'dcl.roster';
+var K_ENROL  = 'dcl.hyd.enrolled';
+var K_TPL    = 'dcl.hyd.templates';
+var K_DRAFTS = 'dcl.hyd.drafts';
+var K_DONE   = 'dcl.hyd.done';
+var K_LAST   = 'dcl.hyd.last';
+var K_STAFF  = 'dcl.hyd.staff';
+
+function load(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+/* =========================================================================
+   DEFAULTS  —  modelled on the paper form already in use
+   ========================================================================= */
+var DEFAULT_BLOCKS = [
+    { id: 'morning',   label: 'Morning',   from: '09:30', to: '12:00', icon: '☀️', tint: 'morning' },
+    { id: 'afternoon', label: 'Afternoon', from: '12:00', to: '15:15', icon: '⛅',       tint: 'afternoon' }
+];
+var QUICK_OZ = [2, 4, 6, 8, 12];
+var QUICK_ML = [30, 60, 120, 180, 240];
+
+/* Optional timed add-ons. Off unless a student needs them. */
+var EXTRAS = [
+    {
+        key: 'seizures', label: 'Seizure activity', emoji: '⚡', desc: 'Type, duration, what was seen and done',
+        fields: [
+            { k: 'type',     label: 'Type',     type: 'select', options: ['Tonic-clonic', 'Tonic', 'Atonic / drop', 'Absence', 'Myoclonic', 'Focal', 'Unclear'], required: true },
+            { k: 'duration', label: 'Duration', type: 'text', placeholder: 'e.g. 45 sec', required: true },
+            { k: 'observed', label: 'What was seen', type: 'text' },
+            { k: 'response', label: 'Response given', type: 'select', options: ['Positioned & monitored', 'Oxygen', 'Rescue medication', 'Suction', 'Called nurse', '911 / EMS'] },
+            { k: 'notified', label: 'Who was told', type: 'text' }
+        ],
+        main: function (e) { return e.type + ' · ' + e.duration; },
+        sub:  function (e) { return [e.observed, e.response, e.notified ? 'notified: ' + e.notified : ''].filter(Boolean).join(' — '); }
+    },
+    {
+        key: 'meds', label: 'Medication', emoji: '💊', desc: 'What was given, dose and by whom',
+        fields: [
+            { k: 'med',   label: 'Medication', type: 'text', required: true },
+            { k: 'dose',  label: 'Dose',       type: 'text' },
+            { k: 'route', label: 'Route',      type: 'select', options: ['Oral', 'G-tube', 'Nasal', 'Rectal', 'Inhaled', 'Topical'] },
+            { k: 'by',    label: 'Given by',   type: 'text' }
+        ],
+        main: function (e) { return e.med + (e.dose ? ' · ' + e.dose : ''); },
+        sub:  function (e) { return [e.route, e.by ? 'by ' + e.by : ''].filter(Boolean).join(' — '); }
+    },
+    {
+        key: 'tube', label: 'Tube feeding', emoji: '🍼', desc: 'Formula, volume and tolerance',
+        sumField: 'volume',
+        fields: [
+            { k: 'formula',   label: 'Formula',   type: 'text' },
+            { k: 'volume',    label: 'Volume',    type: 'number', min: 0, step: 5, required: true, unit: true },
+            { k: 'rate',      label: 'Method',    type: 'select', options: ['Bolus', 'Gravity', 'Pump', 'Continuous'] },
+            { k: 'tolerance', label: 'Tolerated', type: 'select', options: ['Well', 'Some gagging', 'Retching', 'Vomited'] }
+        ],
+        main: function (e, u) { return fmtNum(e.volume) + ' ' + u + (e.formula ? ' · ' + e.formula : ''); },
+        sub:  function (e) { return [e.rate, e.tolerance ? 'tolerated: ' + e.tolerance : ''].filter(Boolean).join(' — '); }
+    },
+    {
+        key: 'toileting', label: 'Toileting & care', emoji: '🧻', desc: 'Changes, output and skin checks',
+        fields: [
+            { k: 'kind',   label: 'What',   type: 'select', options: ['Wet', 'BM', 'Wet + BM', 'Dry', 'Catheterised', 'Skin check'], required: true },
+            { k: 'detail', label: 'Detail', type: 'text' },
+            { k: 'by',     label: 'By',     type: 'text' }
+        ],
+        main: function (e) { return e.kind; },
+        sub:  function (e) { return [e.detail, e.by ? 'by ' + e.by : ''].filter(Boolean).join(' — '); }
+    },
+    {
+        key: 'respiratory', label: 'Respiratory', emoji: '🫁', desc: 'Suction, oxygen and saturations',
+        fields: [
+            { k: 'kind',   label: 'What',   type: 'select', options: ['Suction', 'Oxygen', 'Sats check', 'Nebuliser', 'Chest physio', 'Cough assist'], required: true },
+            { k: 'detail', label: 'Detail', type: 'text' },
+            { k: 'sats',   label: 'SpO₂ %', type: 'number', min: 0, max: 100, step: 1 }
+        ],
+        main: function (e) { return e.kind + (e.sats ? ' · SpO₂ ' + e.sats + '%' : ''); },
+        sub:  function (e) { return e.detail || ''; }
+    },
+    {
+        key: 'events', label: 'Other events', emoji: '📌', desc: 'Anything else worth a timestamp',
+        fields: [
+            { k: 'what', label: 'What happened', type: 'text', required: true },
+            { k: 'note', label: 'Detail',        type: 'text' }
+        ],
+        main: function (e) { return e.what; },
+        sub:  function (e) { return e.note || ''; }
+    }
+];
+var EXTRA_BY_KEY = {};
+EXTRAS.forEach(function (x) { EXTRA_BY_KEY[x.key] = x; });
+
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function slug(s) { return String(s).trim().toLowerCase().replace(/\s+/g, ' '); }
+function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function fmtNum(n) { var v = parseFloat(n); return isNaN(v) ? '0' : String(Math.round(v * 10) / 10); }
+function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function nowHM() {
+    var d = new Date();
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function fmtTime(hm) {
+    if (!hm) return '';
+    var p = hm.split(':'), h = parseInt(p[0], 10), m = p[1];
+    var ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    return h + ':' + m + ' ' + ap;
+}
+function prettyDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T12:00:00');
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+}
+function possessive(n) { return n + (/s$/i.test(n) ? '’' : '’s'); }
+var toastTimer = null;
+function toast(text, kind) {
+    var b = $('toast');
+    b.textContent = text;
+    b.className = (kind || 'msg-info') + ' show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { b.classList.remove('show'); }, 3600);
+}
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+var roster    = load(K_ROSTER, []);
+var enrolled  = load(K_ENROL, []);
+var templates = load(K_TPL, {});
+var drafts    = load(K_DRAFTS, {});
+var done      = load(K_DONE, {});
+var staff     = load(K_STAFF, { by: '', initials: '' });
+
+function blankState() {
+    return { name: '', date: todayISO(), blocks: {}, entries: [], notes: '',
+             by: staff.by || '', initials: staff.initials || '' };
+}
+var state = blankState();
+
+function defaultTemplate() {
+    var on = {};
+    EXTRAS.forEach(function (x) { on[x.key] = false; });
+    return { title: 'Daily Hydration Log', blocks: DEFAULT_BLOCKS.map(function (b) { return Object.assign({}, b); }),
+             unit: 'oz', goal: 0, extras: on };
+}
+function templateFor(name) {
+    var t = templates[slug(name)];
+    if (!t) return defaultTemplate();
+    var d = defaultTemplate();
+    return {
+        title: t.title || d.title,
+        blocks: (t.blocks && t.blocks.length) ? t.blocks : d.blocks,
+        unit: t.unit || 'oz',
+        goal: num(t.goal),
+        extras: Object.assign(d.extras, t.extras || {})
+    };
+}
+function activeExtras() {
+    var t = templateFor(state.name);
+    return EXTRAS.filter(function (x) { return t.extras[x.key]; });
+}
+function draftKey(name, date) { return slug(name) + '|' + date; }
+function blockData(id) {
+    if (!state.blocks[id]) state.blocks[id] = { water: 0, meals: '', notes: '' };
+    return state.blocks[id];
+}
+function dayTotal() {
+    var t = templateFor(state.name);
+    return t.blocks.reduce(function (a, b) { return a + num((state.blocks[b.id] || {}).water); }, 0);
+}
+
+/* =========================================================================
+   RENDER
+   ========================================================================= */
+function renderBlocks() {
+    var wrap = $('blocks');
+    wrap.innerHTML = '';
+    if (!state.name) {
+        wrap.innerHTML = '<div class="card"><div class="empty">Pick a student above to start logging.</div></div>';
+        $('total-card').style.display = 'none';
+        return;
+    }
+    $('total-card').style.display = '';
+    var t = templateFor(state.name);
+    var quick = t.unit === 'oz' ? QUICK_OZ : QUICK_ML;
+
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = '<div class="card-head"><div class="card-title"><span class="ico">💧</span>' +
+                     esc(t.title) + '</div></div>';
+
+    t.blocks.forEach(function (b) {
+        var d = blockData(b.id);
+        var tint = b.tint === 'afternoon' ? 'var(--afternoon)' : 'var(--morning)';
+        var el = document.createElement('div');
+        el.className = 'block';
+        el.innerHTML =
+            '<div class="block-head" style="background:' + tint + '">' +
+                '<span><span class="f-emoji">' + (b.icon || '') + '</span> ' + esc(b.label) + '</span>' +
+                '<span class="when">' + esc(fmtTime(b.from)) + ' – ' + esc(fmtTime(b.to)) + '</span>' +
+            '</div>' +
+            '<div class="block-body">' +
+                '<div>' +
+                    '<label class="lbl">Water drank</label>' +
+                    '<div class="amt-wrap">' +
+                        '<input type="number" class="amt" data-w="' + esc(b.id) + '" min="0" step="0.5" inputmode="decimal" value="' + esc(d.water || 0) + '">' +
+                        '<span class="amt-unit">' + esc(t.unit) + '</span>' +
+                    '</div>' +
+                    '<div class="quick" data-q="' + esc(b.id) + '">' +
+                        quick.map(function (q) { return '<button type="button" data-v="' + q + '">+' + q + '</button>'; }).join('') +
+                        '<button type="button" class="clear" data-v="clear">clear</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div>' +
+                    '<label class="lbl">Meals / snacks</label>' +
+                    '<textarea class="field" data-m="' + esc(b.id) + '" placeholder="What was offered and eaten"></textarea>' +
+                '</div>' +
+                '<div>' +
+                    '<label class="lbl">Notes</label>' +
+                    '<textarea class="field" data-n="' + esc(b.id) + '" placeholder="Anything worth passing on"></textarea>' +
+                '</div>' +
+            '</div>';
+        el.querySelector('[data-m]').value = d.meals || '';
+        el.querySelector('[data-n]').value = d.notes || '';
+        card.appendChild(el);
+    });
+
+    card.addEventListener('input', function (ev) {
+        var w = ev.target.closest('[data-w]');
+        if (w) { blockData(w.dataset.w).water = num(w.value); renderTotal(); queueSave(); return; }
+        var m = ev.target.closest('[data-m]');
+        if (m) { blockData(m.dataset.m).meals = m.value; queueSave(); return; }
+        var n = ev.target.closest('[data-n]');
+        if (n) { blockData(n.dataset.n).notes = n.value; queueSave(); }
+    });
+    card.addEventListener('click', function (ev) {
+        var q = ev.target.closest('[data-v]');
+        if (!q) return;
+        var holder = q.closest('[data-q]');
+        var d = blockData(holder.dataset.q);
+        d.water = q.dataset.v === 'clear' ? 0 : num(d.water) + num(q.dataset.v);
+        card.querySelector('[data-w="' + holder.dataset.q + '"]').value = d.water;
+        renderTotal();
+        queueSave();
+    });
+
+    wrap.appendChild(card);
+}
+
+function renderTotal() {
+    var t = templateFor(state.name);
+    var tot = dayTotal();
+    $('day-total').textContent = fmtNum(tot);
+    $('day-unit').textContent = t.unit;
+    if (t.goal > 0) {
+        var pct = Math.max(0, Math.min(100, (tot / t.goal) * 100));
+        $('goal-bar').style.width = pct + '%';
+        $('goal-text').textContent = 'Goal ' + fmtNum(t.goal) + ' ' + t.unit + (tot >= t.goal ? ' — met ✓' : '');
+        $('goal-bar').parentElement.style.display = '';
+    } else {
+        $('goal-bar').style.width = '0%';
+        $('goal-bar').parentElement.style.display = 'none';
+        $('goal-text').textContent = 'Goal: stay hydrated!';
+    }
+}
+
+function entriesOf(key) {
+    return state.entries.filter(function (e) { return e.section === key; })
+        .sort(function (a, b) { return (a.time || '').localeCompare(b.time || ''); });
+}
+
+function renderExtras() {
+    var wrap = $('extras');
+    wrap.innerHTML = '';
+    if (!state.name) return;
+    var t = templateFor(state.name);
+
+    activeExtras().forEach(function (sec) {
+        var list = entriesOf(sec.key);
+        var card = document.createElement('div');
+        card.className = 'card';
+
+        var totTxt, totCls;
+        if (sec.sumField) {
+            var sum = list.reduce(function (a, e) { return a + num(e[sec.sumField]); }, 0);
+            totTxt = fmtNum(sum) + ' ' + t.unit;
+            totCls = sum > 0 ? 'total' : 'total none';
+        } else {
+            totTxt = list.length ? list.length + ' logged' : 'none';
+            totCls = list.length ? 'total' : 'total none';
+        }
+
+        var rows = list.length ? list.map(function (e) {
+            var sub = (sec.sub(e, t.unit) || '').trim();
+            return '<div class="entry">' +
+                '<div class="entry-time">' + esc(fmtTime(e.time)) + '</div>' +
+                '<div class="entry-body"><div class="entry-main">' + esc(sec.main(e, t.unit)) + '</div>' +
+                (sub ? '<div class="entry-sub">' + esc(sub) + '</div>' : '') + '</div>' +
+                '<div class="entry-acts">' +
+                    '<button class="icon-btn" data-edit="' + esc(e.id) + '">&#9998;</button>' +
+                    '<button class="icon-btn danger" data-del="' + esc(e.id) + '">&times;</button>' +
+                '</div></div>';
+        }).join('') : '<div class="empty">Nothing logged yet today.</div>';
+
+        card.innerHTML =
+            '<div class="card-head">' +
+                '<div class="card-title"><span class="ico">' + sec.emoji + '</span>' + esc(sec.label) + '</div>' +
+                '<span class="' + totCls + '">' + esc(totTxt) + '</span>' +
+            '</div>' +
+            '<div class="entries">' + rows + '</div>' +
+            '<button class="btn btn-add mt-2" data-add="' + sec.key + '">&#43; Add</button>';
+
+        card.addEventListener('click', function (ev) {
+            var a = ev.target.closest('[data-add]');
+            if (a) { openEntry(a.dataset.add, null); return; }
+            var ed = ev.target.closest('[data-edit]');
+            if (ed) { openEntry(sec.key, ed.dataset.edit); return; }
+            var dl = ev.target.closest('[data-del]');
+            if (dl) {
+                state.entries = state.entries.filter(function (e) { return e.id !== dl.dataset.del; });
+                renderExtras(); queueSave(); toast('Entry removed.', 'msg-info');
+            }
+        });
+        wrap.appendChild(card);
+    });
+}
+
+function renderRoster() {
+    var bar = $('roster-bar');
+    bar.innerHTML = '';
+    if (!enrolled.length) {
+        bar.innerHTML = '<span class="text-sm text-gray-400">No students yet — add the ones who need a hydration log.</span>';
+        return;
+    }
+    enrolled.forEach(function (n) {
+        var dk = draftKey(n, state.date);
+        var cls = 'chip';
+        if (slug(n) === slug(state.name)) cls += ' active';
+        if (done[dk]) cls += ' done';
+        else if (drafts[dk]) cls += ' has-draft';
+        var c = document.createElement('button');
+        c.type = 'button';
+        c.className = cls;
+        c.innerHTML = '<span class="dot"></span>' + esc(n);
+        c.addEventListener('click', function () { switchStudent(n); });
+        bar.appendChild(c);
+    });
+}
+
+function applyState() {
+    $('log-date').value = state.date;
+    $('notes').value = state.notes;
+    $('completed-by').value = state.by;
+    $('initials').value = state.initials;
+    renderRoster();
+    renderBlocks();
+    renderTotal();
+    renderExtras();
+}
+
+/* =========================================================================
+   DRAFTS
+   ========================================================================= */
+function isEmpty(s) {
+    var anyBlock = Object.keys(s.blocks).some(function (k) {
+        var b = s.blocks[k];
+        return num(b.water) > 0 || (b.meals || '').trim() || (b.notes || '').trim();
+    });
+    return !anyBlock && !s.entries.length && !s.notes.trim();
+}
+function readInputs() {
+    state.notes = $('notes').value;
+    state.by = $('completed-by').value;
+    state.initials = $('initials').value;
+}
+function saveDraft() {
+    readInputs();
+    staff = { by: state.by, initials: state.initials };
+    save(K_STAFF, staff);
+    if (!slug(state.name)) return;
+    var dk = draftKey(state.name, state.date);
+    if (isEmpty(state)) delete drafts[dk];
+    else drafts[dk] = { blocks: state.blocks, entries: state.entries, notes: state.notes,
+                        by: state.by, initials: state.initials, t: Date.now() };
+    save(K_DRAFTS, drafts);
+    save(K_LAST, { name: state.name, date: state.date });
+}
+var saveTimer = null;
+function queueSave() {
+    $('save-state').textContent = slug(state.name) ? 'Saving…' : '';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+        saveDraft();
+        $('save-state').textContent = slug(state.name) ? 'Saved ✓' : '';
+        renderRoster();
+    }, 500);
+}
+function loadDraft(name, date) {
+    var s = blankState();
+    s.name = name; s.date = date;
+    var d = drafts[draftKey(name, date)];
+    if (d) {
+        s.blocks = d.blocks || {};
+        s.entries = Array.isArray(d.entries) ? d.entries.slice() : [];
+        s.notes = d.notes || '';
+        s.by = d.by || staff.by || '';
+        s.initials = d.initials || staff.initials || '';
+    }
+    return s;
+}
+function switchStudent(name) {
+    if (slug(name) === slug(state.name)) return;
+    saveDraft();
+    state = loadDraft(name, state.date);
+    applyState();
+    $('save-state').textContent = '';
+}
+function pruneOld() {
+    var cutoff = Date.now() - 60 * 24 * 3600 * 1000, changed = false;
+    Object.keys(drafts).forEach(function (k) {
+        if (!drafts[k] || !drafts[k].t || drafts[k].t < cutoff) { delete drafts[k]; changed = true; }
+    });
+    Object.keys(done).forEach(function (k) {
+        var iso = k.split('|')[1];
+        var when = iso ? new Date(iso + 'T12:00:00').getTime() : 0;
+        if (!when || when < cutoff) { delete done[k]; changed = true; }
+    });
+    if (changed) { save(K_DRAFTS, drafts); save(K_DONE, done); }
+}
+
+/* =========================================================================
+   MODALS
+   ========================================================================= */
+function openModal(id) { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+document.addEventListener('click', function (e) {
+    if (e.target.hasAttribute && e.target.hasAttribute('data-close-modal')) e.target.closest('.modal-back').classList.remove('open');
+    if (e.target.classList && e.target.classList.contains('modal-back')) e.target.classList.remove('open');
+});
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') Array.prototype.forEach.call(document.querySelectorAll('.modal-back.open'), function (m) { m.classList.remove('open'); });
+});
+var confirmCb = null;
+function confirmDialog(title, body, ok, cb) {
+    $('confirm-title').textContent = title;
+    $('confirm-body').textContent = body;
+    $('confirm-ok').textContent = ok;
+    confirmCb = cb;
+    openModal('confirm-modal');
+}
+$('confirm-ok').addEventListener('click', function () {
+    closeModal('confirm-modal');
+    if (confirmCb) { var f = confirmCb; confirmCb = null; f(); }
+});
+
+/* ---------------- set-up ---------------- */
+var tplBlocks = [];
+function renderTplBlocks() {
+    $('tpl-blocks').innerHTML = tplBlocks.map(function (b, i) {
+        return '<div class="blk-edit">' +
+            '<input type="text" class="field py-1.5 text-sm" data-b="label" data-i="' + i + '" value="' + esc(b.label) + '" placeholder="Block name">' +
+            '<input type="time" class="field py-1.5 text-sm" data-b="from" data-i="' + i + '" value="' + esc(b.from) + '">' +
+            '<input type="time" class="field py-1.5 text-sm" data-b="to" data-i="' + i + '" value="' + esc(b.to) + '">' +
+            '<button class="icon-btn danger" data-rm="' + i + '" title="Remove">&times;</button>' +
+        '</div>';
+    }).join('');
+}
+$('tpl-blocks').addEventListener('input', function (e) {
+    var el = e.target.closest('[data-b]');
+    if (!el) return;
+    tplBlocks[parseInt(el.dataset.i, 10)][el.dataset.b] = el.value;
+});
+$('tpl-blocks').addEventListener('click', function (e) {
+    var rm = e.target.closest('[data-rm]');
+    if (!rm) return;
+    if (tplBlocks.length <= 1) { toast('Keep at least one block.', 'msg-error'); return; }
+    tplBlocks.splice(parseInt(rm.dataset.rm, 10), 1);
+    renderTplBlocks();
+});
+$('tpl-add-block').addEventListener('click', function () {
+    tplBlocks.push({ id: 'b' + Date.now().toString(36), label: 'Block', from: '13:00', to: '15:00', icon: '🕒', tint: 'afternoon' });
+    renderTplBlocks();
+});
+
+$('template-btn').addEventListener('click', function () {
+    if (!state.name) { toast('Pick a student first.', 'msg-error'); return; }
+    var t = templateFor(state.name);
+    $('template-sub').textContent = 'For ' + state.name;
+    $('tpl-title').value = t.title;
+    tplBlocks = t.blocks.map(function (b) { return Object.assign({}, b); });
+    renderTplBlocks();
+    $('tpl-unit').value = t.unit;
+    $('tpl-goal').value = t.goal || '';
+    $('tpl-extras').innerHTML = EXTRAS.map(function (x) {
+        return '<div class="tpl-row' + (t.extras[x.key] ? ' on' : '') + '" data-k="' + x.key + '">' +
+            '<span class="ico">' + x.emoji + '</span>' +
+            '<span class="nm">' + esc(x.label) + '<div class="desc">' + esc(x.desc) + '</div></span>' +
+            '<input type="checkbox" class="w-4 h-4 accent-pink-600"' + (t.extras[x.key] ? ' checked' : '') + '>' +
+        '</div>';
+    }).join('');
+    Array.prototype.forEach.call($('tpl-extras').querySelectorAll('.tpl-row'), function (row) {
+        row.addEventListener('click', function (ev) {
+            var cb = row.querySelector('input');
+            if (ev.target !== cb) cb.checked = !cb.checked;
+            row.classList.toggle('on', cb.checked);
+        });
+    });
+    openModal('template-modal');
+});
+
+$('template-save').addEventListener('click', function () {
+    var extras = {};
+    Array.prototype.forEach.call($('tpl-extras').querySelectorAll('.tpl-row'), function (row) {
+        extras[row.dataset.k] = row.querySelector('input').checked;
+    });
+    tplBlocks.forEach(function (b, i) {
+        if (!b.id) b.id = 'b' + i;
+        if (!b.label.trim()) b.label = 'Block ' + (i + 1);
+        b.tint = i === 0 ? 'morning' : 'afternoon';
+        if (!b.icon) b.icon = i === 0 ? '☀️' : '⛅';
+    });
+    templates[slug(state.name)] = {
+        title: $('tpl-title').value.trim() || 'Daily Hydration Log',
+        blocks: tplBlocks, unit: $('tpl-unit').value, goal: num($('tpl-goal').value), extras: extras
+    };
+    save(K_TPL, templates);
+    closeModal('template-modal');
+    applyState();
+    toast('Set-up saved for ' + state.name + '.', 'msg-success');
+});
+
+/* ---------------- timed entry form ---------------- */
+var editingSection = null, editingId = null;
+function openEntry(secKey, id) {
+    var sec = EXTRA_BY_KEY[secKey];
+    var unit = templateFor(state.name).unit;
+    editingSection = secKey; editingId = id;
+    var ex = id ? state.entries.filter(function (e) { return e.id === id; })[0] : null;
+
+    $('entry-title').textContent = (ex ? 'Edit ' : 'Add ') + sec.label.toLowerCase();
+    $('entry-time').value = ex ? ex.time : nowHM();
+    $('entry-fields').innerHTML = sec.fields.map(function (f) {
+        var val = ex ? (ex[f.k] === undefined ? '' : ex[f.k]) : '';
+        var h = '<div class="mb-3"><label class="lbl">' + esc(f.label) + (f.unit ? ' (' + esc(unit) + ')' : '') + (f.required ? ' *' : '') + '</label>';
+        if (f.type === 'select') {
+            h += '<select class="field" data-f="' + esc(f.k) + '"><option value=""></option>' +
+                 f.options.map(function (o) { return '<option value="' + esc(o) + '"' + (String(val) === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+                 '</select>';
+        } else if (f.type === 'number') {
+            h += '<input type="number" class="field" data-f="' + esc(f.k) + '" value="' + esc(val) + '"' +
+                 (f.min !== undefined ? ' min="' + f.min + '"' : '') + (f.max !== undefined ? ' max="' + f.max + '"' : '') +
+                 (f.step !== undefined ? ' step="' + f.step + '"' : '') + ' inputmode="decimal">';
+        } else {
+            h += '<input type="text" class="field" data-f="' + esc(f.k) + '" value="' + esc(val) + '"' +
+                 (f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : '') + ' autocomplete="off">';
+        }
+        return h + '</div>';
+    }).join('');
+    openModal('entry-modal');
+}
+$('entry-save').addEventListener('click', function () {
+    var sec = EXTRA_BY_KEY[editingSection];
+    var rec = { id: editingId || ('e' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36)),
+                section: editingSection, time: $('entry-time').value || nowHM() };
+    var missing = null;
+    sec.fields.forEach(function (f) {
+        var el = $('entry-fields').querySelector('[data-f="' + f.k + '"]');
+        var v = el ? el.value.trim() : '';
+        if (f.required && !v && !missing) missing = f.label;
+        rec[f.k] = v;
+    });
+    if (missing) { toast(missing + ' is required.', 'msg-error'); return; }
+    if (editingId) state.entries = state.entries.map(function (e) { return e.id === editingId ? rec : e; });
+    else state.entries.push(rec);
+    closeModal('entry-modal');
+    renderExtras();
+    queueSave();
+});
+
+/* ---------------- enrol ---------------- */
+$('enroll-btn').addEventListener('click', function () {
+    var avail = roster.filter(function (n) { return !enrolled.some(function (m) { return slug(m) === slug(n); }); });
+    $('enroll-list').innerHTML = avail.length
+        ? avail.map(function (n) { return '<button type="button" class="chip" data-n="' + esc(n) + '">' + esc(n) + '</button>'; }).join('')
+        : '<span class="text-xs text-gray-400">Everyone on your roster is already here.</span>';
+    Array.prototype.forEach.call($('enroll-list').querySelectorAll('[data-n]'), function (b) {
+        b.addEventListener('click', function () { addStudent(b.dataset.n); closeModal('enroll-modal'); });
+    });
+    $('enroll-name').value = '';
+    openModal('enroll-modal');
+});
+$('enroll-save').addEventListener('click', function () {
+    var n = $('enroll-name').value.trim();
+    if (!n) { toast('Type a name or pick one above.', 'msg-error'); return; }
+    addStudent(n);
+    closeModal('enroll-modal');
+});
+function addStudent(n) {
+    if (!enrolled.some(function (m) { return slug(m) === slug(n); })) {
+        enrolled.push(n);
+        enrolled.sort(function (a, b) { return a.localeCompare(b); });
+        save(K_ENROL, enrolled);
+    }
+    if (!roster.some(function (m) { return slug(m) === slug(n); })) {
+        roster.push(n);
+        roster.sort(function (a, b) { return a.localeCompare(b); });
+        save(K_ROSTER, roster);
+    }
+    switchStudent(n);
+    renderRoster();
+    toast(n + ' added.', 'msg-success');
+}
+
+/* ---------------- api key ---------------- */
+function getKey() { try { return (localStorage.getItem(K_API) || '').trim(); } catch (e) { return ''; } }
+$('key-btn').addEventListener('click', function () { $('key-input').value = getKey(); openModal('key-modal'); });
+$('key-save').addEventListener('click', function () {
+    var v = $('key-input').value.trim();
+    try {
+        if (v) { localStorage.setItem(K_API, v); toast('API key saved.', 'msg-success'); }
+        else { localStorage.removeItem(K_API); toast('API key removed.', 'msg-info'); }
+    } catch (e) { toast('Browser storage is blocked.', 'msg-error'); }
+    closeModal('key-modal');
+});
+
+/* =========================================================================
+   GEMINI
+   ========================================================================= */
+async function callGemini(prompt, sys) {
+    var key = getKey();
+    if (!key) { openModal('key-modal'); throw new Error('Add your Gemini API key first (the 🔑 button).'); }
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key);
+    var body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], systemInstruction: { parts: [{ text: sys }] } });
+    var delay = 800;
+    for (var i = 0; i < 3; i++) {
+        var res;
+        try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body }); }
+        catch (e) { if (i === 2) throw new Error('No response from Google — check your connection.'); await sleep(delay); delay *= 2; continue; }
+        if (res.ok) {
+            var data = await res.json();
+            var parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+            var text = parts ? parts.map(function (p) { return p.text || ''; }).join('') : '';
+            if (!text.trim()) throw new Error('Empty response from the model.');
+            return text.trim();
+        }
+        var msg = 'HTTP ' + res.status;
+        try { var eb = await res.json(); if (eb && eb.error && eb.error.message) msg = eb.error.message; } catch (e) {}
+        if (res.status === 429 || res.status >= 500) {
+            if (i === 2) throw new Error('Google is busy: ' + msg);
+            await sleep(delay); delay *= 2; continue;
+        }
+        if (res.status === 400 || res.status === 401 || res.status === 403) throw new Error('API key rejected: ' + msg);
+        throw new Error(msg);
+    }
+}
+
+function dayAsText() {
+    var t = templateFor(state.name);
+    var out = 'Student: ' + state.name + '\nDate: ' + prettyDate(state.date) + '\n';
+    t.blocks.forEach(function (b) {
+        var d = state.blocks[b.id] || {};
+        out += '\n' + b.label + ' (' + fmtTime(b.from) + '–' + fmtTime(b.to) + '): ' +
+               fmtNum(d.water) + ' ' + t.unit + ' water\n';
+        if ((d.meals || '').trim()) out += '  Meals/snacks: ' + d.meals.trim() + '\n';
+        if ((d.notes || '').trim()) out += '  Notes: ' + d.notes.trim() + '\n';
+    });
+    out += '\nDaily total: ' + fmtNum(dayTotal()) + ' ' + t.unit + (t.goal > 0 ? ' (goal ' + fmtNum(t.goal) + ')' : '') + '\n';
+    activeExtras().forEach(function (sec) {
+        var list = entriesOf(sec.key);
+        if (!list.length) return;
+        out += '\n' + sec.label + ':\n';
+        list.forEach(function (e) {
+            var sub = (sec.sub(e, t.unit) || '').trim();
+            out += '  ' + fmtTime(e.time) + ' — ' + sec.main(e, t.unit) + (sub ? ' (' + sub + ')' : '') + '\n';
+        });
+    });
+    return out;
+}
+
+$('polish-btn').addEventListener('click', async function () {
+    if (!state.name) { toast('Pick a student first.', 'msg-error'); return; }
+    var btn = this, rough = $('notes').value.trim();
+    if (isEmpty(state) && !rough) { toast('Log something first.', 'msg-error'); return; }
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader"></span> Writing…';
+        var out = await callGemini(
+            'Today’s record:\n' + dayAsText() + '\nStaff rough notes:\n"' + (rough || 'None.') + '"',
+            'You are a special education teacher writing the General Notes box on a daily hydration and meal log that goes home to parents. ' +
+            'Write ONE objective paragraph of 2-4 sentences in English.\n' +
+            'RULES:\n' +
+            '- Cover energy level, mood, eating and drinking, and any concerns — that is what this box is for.\n' +
+            '- The water amounts and meals are printed in the table above your paragraph. Do NOT re-list them; summarise the shape of the day.\n' +
+            '- Never speculate about medical causes, diagnoses or treatment. Report only what was observed and done.\n' +
+            '- Factual and calm. No flowery language.\n' +
+            '- Output ONLY the paragraph.'
+        );
+        $('notes').value = out;
+        queueSave();
+        toast('Notes written.', 'msg-success');
+    } catch (err) {
+        toast(err.message || 'Could not write the notes.', 'msg-error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '✨ Polish';
+    }
+});
+
+$('translate-btn').addEventListener('click', async function () {
+    var ta = $('notes'), text = ta.value.trim(), btn = this;
+    if (!text) { toast('Nothing to translate yet.', 'msg-error'); return; }
+    var original = btn.innerHTML;
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader loader-dark"></span>';
+        ta.value = await callGemini('Translate to Spanish:\n\n' + text,
+            'You are a professional translator for school-to-home communication. Translate accurately, keep the professional tone. Output ONLY the translation.');
+        queueSave();
+        toast('Translated to Spanish.', 'msg-success');
+    } catch (err) {
+        toast(err.message || 'Could not translate.', 'msg-error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+});
+
+/* =========================================================================
+   PRINTED FORM
+   ========================================================================= */
+function docHTML() {
+    var t = templateFor(state.name);
+    var tot = dayTotal();
+
+    var rows = t.blocks.map(function (b) {
+        var d = state.blocks[b.id] || {};
+        var tint = b.tint === 'afternoon' ? '#e8eef5' : '#fdeef0';
+        var meals = (d.meals || '').trim();
+        var notes = (d.notes || '').trim();
+        return '<tr>' +
+            '<td class="f-when" style="background:' + tint + '">' +
+                '<div class="ic">' + (b.icon || '') + '</div>' +
+                '<div class="nm">' + esc(b.label) + '</div>' +
+                '<div class="hr">' + esc(fmtTime(b.from)) + '<br>&ndash; ' + esc(fmtTime(b.to)) + '</div>' +
+            '</td>' +
+            '<td class="f-water">' + esc(fmtNum(d.water)) + ' <span class="u">' + esc(t.unit) + '</span></td>' +
+            '<td class="f-cell">' + (meals ? esc(meals) : '<span class="f-dim">—</span>') + '</td>' +
+            '<td class="f-cell">' + (notes ? esc(notes) : '<span class="f-dim">—</span>') + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var extraBlocks = activeExtras().map(function (sec) {
+        var list = entriesOf(sec.key);
+        if (!list.length) return '';
+        return '<div class="f-sec"><h2>' + esc(sec.label) + '</h2><table><tbody>' +
+            list.map(function (e) {
+                var sub = (sec.sub(e, t.unit) || '').trim();
+                return '<tr><td class="t">' + esc(fmtTime(e.time)) + '</td>' +
+                       '<td class="m">' + esc(sec.main(e, t.unit)) + '</td>' +
+                       '<td class="d">' + esc(sub) + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
+    }).join('');
+
+    return '<div class="f-doc">' +
+        '<div class="f-title">' +
+            '<div class="f-name">' + esc(possessive(state.name || 'Student')) + '</div>' +
+            '<h1 class="f-h1">' + esc(t.title.toUpperCase()) + '</h1>' +
+            '<div class="f-sub">For staff use and parent knowledge.</div>' +
+        '</div>' +
+        '<div class="f-info">' +
+            '<div><b>Student Name:</b> <span class="v">' + esc(state.name || '') + '</span></div>' +
+            '<div><b>Date:</b> ' + esc(prettyDate(state.date)) + '</div>' +
+            '<div><b>Completed By:</b> ' + esc(state.by || '') + '</div>' +
+        '</div>' +
+        '<table class="f-tbl"><thead><tr>' +
+            '<th>Time of day</th><th>Water drank (' + esc(t.unit) + ')</th><th>Meal / snack</th><th>Notes</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<div class="f-total">' +
+            '<div class="l"><span class="f-emoji">💧</span> Daily total water intake</div>' +
+            '<div class="n">' + esc(fmtNum(tot)) + ' ' + esc(t.unit) + '</div>' +
+            '<div class="g">' + (t.goal > 0
+                ? 'Goal: ' + esc(fmtNum(t.goal)) + ' ' + esc(t.unit) + (tot >= t.goal ? ' — met ✓' : '')
+                : 'Goal: Stay hydrated!') + '</div>' +
+        '</div>' +
+        '<div class="f-notes">' +
+            '<div class="h">General notes</div>' +
+            '<div class="hint">(energy level, mood, sleep, bowel movements, any concerns, etc.)</div>' +
+            '<div class="body">' + (state.notes.trim() ? esc(state.notes.trim()) : '<span class="f-dim">—</span>') + '</div>' +
+        '</div>' +
+        extraBlocks +
+        '<div class="f-sign">' +
+            '<div><b>Staff Initials:</b> ' + esc(state.initials || '') + '</div>' +
+            '<div><b>Date:</b> ' + esc(prettyDate(state.date)) + '</div>' +
+        '</div>' +
+        '<div class="f-foot"><span class="f-emoji">❤️</span> Thank you for your support! <span class="f-emoji">❤️</span></div>' +
+    '</div>';
+}
+
+function busyOverlay(label) {
+    var o = document.createElement('div');
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,.97);z-index:900;' +
+                      'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
+    o.innerHTML = '<div class="loader loader-dark" style="width:44px;height:44px;border-width:4px"></div>' +
+                  '<div style="font-weight:700;font-size:1rem;color:#374151"></div>';
+    o.lastChild.textContent = label;
+    document.body.appendChild(o);
+    return o;
+}
+
+async function downloadPDF(html, filename) {
+    var overlay = busyOverlay('Building the log PDF…');
+    var host = document.createElement('div');
+    host.style.cssText = 'position:absolute;top:0;left:0;z-index:-1;opacity:.01;pointer-events:none';
+    host.innerHTML = '<div style="width:816px;padding:40px;box-sizing:border-box;background:#fff">' + html + '</div>';
+    document.body.appendChild(host);
+
+    // html2canvas measures against the live viewport and the button sits at the
+    // bottom of a long page — pin to the top for the capture, then restore.
+    var keepScroll = window.scrollY;
+    window.scrollTo(0, 0);
+    try {
+        await sleep(300);
+        await html2pdf().set({
+            margin:   [0.2, 0, 0.2, 0],
+            filename: filename + '.pdf',
+            image:    { type: 'jpeg', quality: 0.92 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+            jsPDF:     { unit: 'in', format: 'letter', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'], avoid: ['.f-sec', '.f-notes', '.f-total'] }
+        }).from(host.firstChild).save();
+        toast('Saved ' + filename + '.pdf to your downloads.', 'msg-success');
+        return true;
+    } catch (err) {
+        console.error(err);
+        toast('Could not build the PDF. Try again.', 'msg-error');
+        return false;
+    } finally {
+        host.remove();
+        overlay.remove();
+        window.scrollTo(0, keepScroll);
+    }
+}
+
+$('pdf-btn').addEventListener('click', async function () {
+    if (!state.name) { toast('Pick a student first.', 'msg-error'); return; }
+    readInputs();
+    var ok = await downloadPDF(docHTML(),
+        'Hydration_Log_' + state.name.replace(/\s+/g, '_') + '_' + state.date);
+    if (ok) { done[draftKey(state.name, state.date)] = true; save(K_DONE, done); renderRoster(); }
+});
+
+/* =========================================================================
+   WIRING
+   ========================================================================= */
+$('notes').addEventListener('input', queueSave);
+$('completed-by').addEventListener('input', queueSave);
+$('initials').addEventListener('input', queueSave);
+$('log-date').addEventListener('change', function () {
+    saveDraft();
+    state = loadDraft(state.name, this.value || todayISO());
+    applyState();
+});
+$('clear-btn').addEventListener('click', function () {
+    if (!state.name) return;
+    confirmDialog('Clear this day?',
+        'Every amount, meal and note for ' + state.name + ' on this date will be wiped. The set-up stays.',
+        'Clear it', function () {
+            var n = state.name, d = state.date;
+            delete drafts[draftKey(n, d)];
+            delete done[draftKey(n, d)];
+            save(K_DRAFTS, drafts); save(K_DONE, done);
+            state = blankState(); state.name = n; state.date = d;
+            applyState();
+            toast('Cleared.', 'msg-info');
+        });
+});
+window.addEventListener('beforeunload', saveDraft);
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+(function init() {
+    pruneOld();
+    var last = load(K_LAST, null);
+    if (last && last.date === todayISO() && last.name &&
+        enrolled.some(function (n) { return slug(n) === slug(last.name); })) {
+        state = loadDraft(last.name, last.date);
+    } else if (enrolled.length) {
+        state = loadDraft(enrolled[0], todayISO());
+    } else {
+        state = blankState();
+    }
+    applyState();
+})();
+
+})();
+</script>
+
+</body>
+</html>
