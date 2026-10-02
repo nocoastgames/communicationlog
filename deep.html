@@ -73,6 +73,23 @@
         .food-sub { font-size: .75rem; color: var(--ink-soft); margin-top: .0625rem; word-break: break-word; }
         .food-empty { padding: .5rem; text-align: center; color: #9ca3af; font-size: .75rem; font-style: italic; }
 
+        /* ---- toileting counters (same shape as the quick log) ---- */
+        .counter-row {
+            display: flex; align-items: center; gap: .5rem;
+            padding: .5rem .625rem; border: 1px solid var(--line);
+            border-radius: 12px; background: #fff; margin-bottom: .5rem;
+        }
+        .counter-label { flex: 1; font-size: .8125rem; font-weight: 600; color: #4b5563; }
+        .counter-btn {
+            width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line);
+            background: #f9fafb; font-size: 1.125rem; font-weight: 700; color: #4b5563;
+            cursor: pointer; line-height: 1;
+        }
+        .counter-btn:hover { background: #f3f4f6; border-color: #cbd5e1; }
+        .counter-btn:active { transform: scale(.94); }
+        .counter-val { width: 30px; text-align: center; font-size: 1.125rem; font-weight: 800; }
+        .counter-val.zero { color: #d1d5db; }
+
         .field {
             width: 100%; border: 1.5px solid var(--line); border-radius: 11px;
             padding: .5rem .75rem; font-size: .9375rem; background: #fff;
@@ -236,6 +253,11 @@
         .f-sec { margin-top: 11pt; break-inside: avoid; page-break-inside: avoid; }
         .f-sec h2 { font-size: 8.5pt; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin: 0 0 4pt; padding-bottom: 3pt; border-bottom: .75pt solid #d1d5db; display: flex; justify-content: space-between; align-items: baseline; gap: 8pt; }
         .f-sec .f-sum { font-size: 8pt; font-weight: 800; color: #be3455; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+        .f-caretbl { width: 100%; border-collapse: separate; border-spacing: 5pt 0; table-layout: fixed; }
+        .f-caretbl td { border: .75pt solid #e5e7eb; border-radius: 6pt; background: #fafafa; padding: 5pt 2pt; text-align: center; }
+        .f-caretbl .n { font-size: 14pt; font-weight: 800; color: #be3455; line-height: 1.1; }
+        .f-caretbl .l { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; color: #6b7280; margin-top: 2pt; }
+        .f-carenote { margin-top: 5pt; font-size: 9.5pt; white-space: pre-wrap; color: #374151; }
         .f-meal { margin-bottom: 3pt; }
         .f-meal:last-child { margin-bottom: 0; }
         .f-mealsub { color: #6b7280; font-size: 9pt; }
@@ -296,6 +318,8 @@
             <div class="goal" id="goal-text"></div>
         </div>
     </div>
+
+    <div id="care"></div>
 
     <div id="extras"></div>
 
@@ -471,7 +495,7 @@ function foodSub(e)  { return [e.offered, e.method].filter(Boolean).join(' — '
    by default; the rest stay off unless a student needs them. */
 var EXTRAS = [
     {
-        key: 'meds', label: 'Medication', emoji: '💊', desc: 'What was given, dose and by whom', defaultOn: true,
+        key: 'meds', label: 'Medication', emoji: '💊', desc: 'What was given, dose and by whom',
         fields: [
             { k: 'med',   label: 'Medication', type: 'text', required: true },
             { k: 'dose',  label: 'Dose',       type: 'text', placeholder: 'e.g. 5 mg' },
@@ -482,26 +506,6 @@ var EXTRAS = [
         main: function (e) { return e.med + (e.dose ? ' · ' + e.dose : ''); },
         sub:  function (e) { return [e.route, e.by ? 'by ' + e.by : '', e.note].filter(Boolean).join(' — '); },
         summary: function (list) { return list.length + (list.length === 1 ? ' dose' : ' doses'); }
-    },
-    {
-        key: 'toileting', label: 'Toileting & care', emoji: '🚻', desc: 'Changes, output and skin checks', defaultOn: true,
-        fields: [
-            { k: 'kind',   label: 'What',   type: 'select', options: ['Wet', 'BM', 'Wet + BM', 'Dry', 'Catheterised', 'Skin check'], required: true },
-            { k: 'detail', label: 'Detail', type: 'text', placeholder: 'e.g. small, soft / redness noted' },
-            { k: 'by',     label: 'By',     type: 'text' },
-            { k: 'note',   label: 'Note',   type: 'text' }
-        ],
-        main: function (e) { return e.kind; },
-        sub:  function (e) { return [e.detail, e.by ? 'by ' + e.by : '', e.note].filter(Boolean).join(' — '); },
-        /* Parents read the tally, not the list — "2 wet · 1 BM" beats "3 logged". */
-        summary: function (list) {
-            var c = {}, order = [];
-            list.forEach(function (e) {
-                if (c[e.kind] === undefined) { c[e.kind] = 0; order.push(e.kind); }
-                c[e.kind]++;
-            });
-            return order.map(function (k) { return c[k] + ' ' + k; }).join(' · ');
-        }
     },
     {
         key: 'seizures', label: 'Seizure activity', emoji: '⚡', desc: 'Type, duration, what was seen and done',
@@ -604,15 +608,23 @@ var drafts    = load(K_DRAFTS, {});
 var done      = load(K_DONE, {});
 var staff     = load(K_STAFF, { by: '', initials: '' });
 
+/* Toileting is counters plus one note, the same shape as the quick log,
+   rather than a timed entry per change. */
+var CARE = { key: 'toileting', label: 'Toileting & care', emoji: '🚻',
+             desc: 'Wet / BM / Dry counts and a short note', defaultOn: true };
+var CARE_KINDS = [['wet', 'Wet'], ['bm', 'BM'], ['dry', 'Dry']];
+
+function blankCare() { return { wet: 0, bm: 0, dry: 0, notes: '' }; }
 function blankState() {
     return { name: '', date: todayISO(), blocks: {}, entries: [], notes: '',
-             by: staff.by || '', initials: staff.initials || '' };
+             care: blankCare(), by: staff.by || '', initials: staff.initials || '' };
 }
 var state = blankState();
 
 function defaultTemplate() {
     var on = {};
     EXTRAS.forEach(function (x) { on[x.key] = !!x.defaultOn; });
+    on[CARE.key] = CARE.defaultOn;
     return { title: 'Daily Hydration Log', blocks: DEFAULT_BLOCKS.map(function (b) { return Object.assign({}, b); }),
              unit: 'oz', goal: 0, extras: on };
 }
@@ -772,6 +784,63 @@ function entriesOf(key) {
         .sort(function (a, b) { return (a.time || '').localeCompare(b.time || ''); });
 }
 
+function careSummary() {
+    var bits = CARE_KINDS.filter(function (k) { return num(state.care[k[0]]) > 0; })
+        .map(function (k) { return num(state.care[k[0]]) + ' ' + k[1]; });
+    return bits.join(' · ');
+}
+
+function renderCare() {
+    var wrap = $('care');
+    wrap.innerHTML = '';
+    if (!state.name || !templateFor(state.name).extras[CARE.key]) return;
+
+    var sum = careSummary();
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML =
+        '<div class="card-head">' +
+            '<div class="card-title"><span class="ico">' + CARE.emoji + '</span>' + esc(CARE.label) + '</div>' +
+            '<span class="care-chip ' + (sum ? 'total' : 'total none') + '">' + esc(sum || 'none') + '</span>' +
+        '</div>' +
+        '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
+            '<div>' +
+                CARE_KINDS.map(function (k) {
+                    return '<div class="counter-row">' +
+                        '<span class="counter-label">' + k[1] + '</span>' +
+                        '<button type="button" class="counter-btn" data-c="' + k[0] + '" data-s="-1">&minus;</button>' +
+                        '<span class="counter-val' + (num(state.care[k[0]]) === 0 ? ' zero' : '') + '" data-cv="' + k[0] + '">' + num(state.care[k[0]]) + '</span>' +
+                        '<button type="button" class="counter-btn" data-c="' + k[0] + '" data-s="1">&plus;</button>' +
+                    '</div>';
+                }).join('') +
+            '</div>' +
+            '<div>' +
+                '<label class="lbl">Notes</label>' +
+                '<textarea class="field" id="care-notes" style="min-height:104px" placeholder="e.g. soft BM at 1:10, slight redness — cream applied"></textarea>' +
+            '</div>' +
+        '</div>';
+
+    card.querySelector('#care-notes').value = state.care.notes || '';
+    card.addEventListener('click', function (ev) {
+        var b = ev.target.closest('[data-s]');
+        if (!b) return;
+        var k = b.dataset.c;
+        state.care[k] = Math.max(0, num(state.care[k]) + parseInt(b.dataset.s, 10));
+        var el = card.querySelector('[data-cv="' + k + '"]');
+        el.textContent = state.care[k];
+        el.classList.toggle('zero', state.care[k] === 0);
+        var chip = card.querySelector('.care-chip');
+        var s = careSummary();
+        chip.textContent = s || 'none';
+        chip.className = 'care-chip ' + (s ? 'total' : 'total none');
+        queueSave();
+    });
+    card.addEventListener('input', function (ev) {
+        if (ev.target.id === 'care-notes') { state.care.notes = ev.target.value; queueSave(); }
+    });
+    wrap.appendChild(card);
+}
+
 function renderExtras() {
     var wrap = $('extras');
     wrap.innerHTML = '';
@@ -860,6 +929,7 @@ function applyState() {
     renderRoster();
     renderBlocks();
     renderTotal();
+    renderCare();
     renderExtras();
 }
 
@@ -871,7 +941,9 @@ function isEmpty(s) {
         var b = s.blocks[k];
         return num(b.water) > 0 || (b.notes || '').trim();
     });
-    return !anyBlock && !s.entries.length && !s.notes.trim();
+    var c = s.care || {};
+    var anyCare = num(c.wet) > 0 || num(c.bm) > 0 || num(c.dry) > 0 || (c.notes || '').trim();
+    return !anyBlock && !anyCare && !s.entries.length && !s.notes.trim();
 }
 function readInputs() {
     state.notes = $('notes').value;
@@ -886,7 +958,7 @@ function saveDraft() {
     var dk = draftKey(state.name, state.date);
     if (isEmpty(state)) delete drafts[dk];
     else drafts[dk] = { blocks: state.blocks, entries: state.entries, notes: state.notes,
-                        by: state.by, initials: state.initials, t: Date.now() };
+                        care: state.care, by: state.by, initials: state.initials, t: Date.now() };
     save(K_DRAFTS, drafts);
     save(K_LAST, { name: state.name, date: state.date });
 }
@@ -908,6 +980,7 @@ function loadDraft(name, date) {
         s.blocks = d.blocks || {};
         s.entries = Array.isArray(d.entries) ? d.entries.slice() : [];
         s.notes = d.notes || '';
+        s.care = Object.assign(blankCare(), d.care || {});
         s.by = d.by || staff.by || '';
         s.initials = d.initials || staff.initials || '';
     }
@@ -996,7 +1069,7 @@ $('template-btn').addEventListener('click', function () {
     renderTplBlocks();
     $('tpl-unit').value = t.unit;
     $('tpl-goal').value = t.goal || '';
-    $('tpl-extras').innerHTML = EXTRAS.map(function (x) {
+    $('tpl-extras').innerHTML = [CARE].concat(EXTRAS).map(function (x) {
         return '<div class="tpl-row' + (t.extras[x.key] ? ' on' : '') + '" data-k="' + x.key + '">' +
             '<span class="ico">' + x.emoji + '</span>' +
             '<span class="nm">' + esc(x.label) + '<div class="desc">' + esc(x.desc) + '</div></span>' +
@@ -1175,6 +1248,10 @@ function dayAsText() {
         if ((d.notes || '').trim()) out += '  Notes: ' + d.notes.trim() + '\n';
     });
     out += '\nDaily total: ' + fmtNum(dayTotal()) + ' ' + t.unit + (t.goal > 0 ? ' (goal ' + fmtNum(t.goal) + ')' : '') + '\n';
+    if (t.extras[CARE.key]) {
+        out += '\nToileting — wet: ' + num(state.care.wet) + ', BM: ' + num(state.care.bm) + ', dry: ' + num(state.care.dry) + '\n';
+        if ((state.care.notes || '').trim()) out += '  ' + state.care.notes.trim() + '\n';
+    }
     activeExtras().forEach(function (sec) {
         var list = entriesOf(sec.key);
         if (!list.length) return;
@@ -1264,6 +1341,21 @@ function docHTML() {
         '</tr>';
     }).join('');
 
+    var careBlock = '';
+    if (t.extras[CARE.key]) {
+        var cs = careSummary();
+        careBlock = '<div class="f-sec"><h2>' + esc(CARE.label) +
+            '<span class="f-sum">' + esc(cs || 'none') + '</span></h2>' +
+            '<table class="f-caretbl"><tbody><tr>' +
+                CARE_KINDS.map(function (k) {
+                    return '<td><div class="n">' + num(state.care[k[0]]) + '</div><div class="l">' + esc(k[1]) + '</div></td>';
+                }).join('') +
+            '</tr></tbody></table>' +
+            ((state.care.notes || '').trim()
+                ? '<div class="f-carenote">' + esc(state.care.notes.trim()) + '</div>' : '') +
+        '</div>';
+    }
+
     var extraBlocks = activeExtras().map(function (sec) {
         var list = entriesOf(sec.key);
         if (!list.length) return '';
@@ -1306,7 +1398,7 @@ function docHTML() {
             '<div class="hint">(energy level, mood, sleep, bowel movements, any concerns, etc.)</div>' +
             '<div class="body">' + (state.notes.trim() ? esc(state.notes.trim()) : '<span class="f-dim">—</span>') + '</div>' +
         '</div>' +
-        extraBlocks +
+        careBlock + extraBlocks +
         '<div class="f-sign">' +
             '<div><b>Staff Initials:</b> ' + esc(state.initials || '') + '</div>' +
             '<div><b>Date:</b> ' + esc(prettyDate(state.date)) + '</div>' +
