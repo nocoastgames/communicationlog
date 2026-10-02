@@ -64,6 +64,15 @@
 
         .lbl { display: block; font-size: .6875rem; font-weight: 800; color: #6b7280; margin-bottom: .25rem; text-transform: uppercase; letter-spacing: .05em; }
 
+        /* ---- food entries inside a block ---- */
+        .foodlist { border: 1.5px solid var(--line); border-radius: 11px; overflow: hidden; background: #fff; }
+        .food-row { display: flex; align-items: flex-start; gap: .5rem; padding: .375rem .5rem; border-bottom: 1px solid #f3f4f6; }
+        .food-row:last-child { border-bottom: 0; }
+        .food-body { flex: 1; min-width: 0; }
+        .food-main { font-size: .8125rem; font-weight: 700; }
+        .food-sub { font-size: .75rem; color: var(--ink-soft); margin-top: .0625rem; word-break: break-word; }
+        .food-empty { padding: .5rem; text-align: center; color: #9ca3af; font-size: .75rem; font-style: italic; }
+
         .field {
             width: 100%; border: 1.5px solid var(--line); border-radius: 11px;
             padding: .5rem .75rem; font-size: .9375rem; background: #fff;
@@ -225,7 +234,11 @@
         .f-foot { text-align: center; margin-top: 9pt; font-weight: 700; font-size: 10.5pt; color: #be3455; }
 
         .f-sec { margin-top: 11pt; break-inside: avoid; page-break-inside: avoid; }
-        .f-sec h2 { font-size: 8.5pt; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin: 0 0 4pt; padding-bottom: 3pt; border-bottom: .75pt solid #d1d5db; }
+        .f-sec h2 { font-size: 8.5pt; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #374151; margin: 0 0 4pt; padding-bottom: 3pt; border-bottom: .75pt solid #d1d5db; display: flex; justify-content: space-between; align-items: baseline; gap: 8pt; }
+        .f-sec .f-sum { font-size: 8pt; font-weight: 800; color: #be3455; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+        .f-meal { margin-bottom: 3pt; }
+        .f-meal:last-child { margin-bottom: 0; }
+        .f-mealsub { color: #6b7280; font-size: 9pt; }
         .f-sec table { width: 100%; border-collapse: collapse; }
         .f-sec td { border: .75pt solid #e5e7eb; padding: 3.5pt 6pt; font-size: 9.5pt; vertical-align: top; }
         .f-sec .t { font-weight: 700; width: 58pt; white-space: nowrap; }
@@ -443,8 +456,53 @@ var DEFAULT_BLOCKS = [
 var QUICK_OZ = [2, 4, 6, 8, 12];
 var QUICK_ML = [30, 60, 120, 180, 240];
 
-/* Optional timed add-ons. Off unless a student needs them. */
+/* Food is logged against a time block, not a free clock time, so the printed
+   form's "Meal / Snack" column stays exactly where staff expect it. */
+var FOOD_FIELDS = [
+    { k: 'meal',    label: 'Meal',    type: 'select', options: ['Breakfast', 'Morning snack', 'Lunch', 'Afternoon snack', 'Other'], required: true },
+    { k: 'offered', label: 'What was offered', type: 'text', placeholder: 'e.g. yogurt, crackers, peaches' },
+    { k: 'eaten',   label: 'Amount eaten', type: 'select', options: ['All', 'Most (3/4)', 'Half', 'Some (1/4)', 'A taste', 'None — refused'], required: true },
+    { k: 'method',  label: 'How',     type: 'select', options: ['Self-fed', 'Hand over hand', 'Fed by staff', 'Adapted utensil', 'G-tube'] }
+];
+function foodMain(e) { return e.meal + ' — ' + e.eaten; }
+function foodSub(e)  { return [e.offered, e.method].filter(Boolean).join(' — '); }
+
+/* Timed sections printed under the main form. Medication and toileting are on
+   by default; the rest stay off unless a student needs them. */
 var EXTRAS = [
+    {
+        key: 'meds', label: 'Medication', emoji: '💊', desc: 'What was given, dose and by whom', defaultOn: true,
+        fields: [
+            { k: 'med',   label: 'Medication', type: 'text', required: true },
+            { k: 'dose',  label: 'Dose',       type: 'text', placeholder: 'e.g. 5 mg' },
+            { k: 'route', label: 'Route',      type: 'select', options: ['Oral', 'G-tube', 'Nasal', 'Rectal', 'Inhaled', 'Topical'] },
+            { k: 'by',    label: 'Given by',   type: 'text', placeholder: 'e.g. school nurse' },
+            { k: 'note',  label: 'Note',       type: 'text' }
+        ],
+        main: function (e) { return e.med + (e.dose ? ' · ' + e.dose : ''); },
+        sub:  function (e) { return [e.route, e.by ? 'by ' + e.by : '', e.note].filter(Boolean).join(' — '); },
+        summary: function (list) { return list.length + (list.length === 1 ? ' dose' : ' doses'); }
+    },
+    {
+        key: 'toileting', label: 'Toileting & care', emoji: '🚻', desc: 'Changes, output and skin checks', defaultOn: true,
+        fields: [
+            { k: 'kind',   label: 'What',   type: 'select', options: ['Wet', 'BM', 'Wet + BM', 'Dry', 'Catheterised', 'Skin check'], required: true },
+            { k: 'detail', label: 'Detail', type: 'text', placeholder: 'e.g. small, soft / redness noted' },
+            { k: 'by',     label: 'By',     type: 'text' },
+            { k: 'note',   label: 'Note',   type: 'text' }
+        ],
+        main: function (e) { return e.kind; },
+        sub:  function (e) { return [e.detail, e.by ? 'by ' + e.by : '', e.note].filter(Boolean).join(' — '); },
+        /* Parents read the tally, not the list — "2 wet · 1 BM" beats "3 logged". */
+        summary: function (list) {
+            var c = {}, order = [];
+            list.forEach(function (e) {
+                if (c[e.kind] === undefined) { c[e.kind] = 0; order.push(e.kind); }
+                c[e.kind]++;
+            });
+            return order.map(function (k) { return c[k] + ' ' + k; }).join(' · ');
+        }
+    },
     {
         key: 'seizures', label: 'Seizure activity', emoji: '⚡', desc: 'Type, duration, what was seen and done',
         fields: [
@@ -458,17 +516,6 @@ var EXTRAS = [
         sub:  function (e) { return [e.observed, e.response, e.notified ? 'notified: ' + e.notified : ''].filter(Boolean).join(' — '); }
     },
     {
-        key: 'meds', label: 'Medication', emoji: '💊', desc: 'What was given, dose and by whom',
-        fields: [
-            { k: 'med',   label: 'Medication', type: 'text', required: true },
-            { k: 'dose',  label: 'Dose',       type: 'text' },
-            { k: 'route', label: 'Route',      type: 'select', options: ['Oral', 'G-tube', 'Nasal', 'Rectal', 'Inhaled', 'Topical'] },
-            { k: 'by',    label: 'Given by',   type: 'text' }
-        ],
-        main: function (e) { return e.med + (e.dose ? ' · ' + e.dose : ''); },
-        sub:  function (e) { return [e.route, e.by ? 'by ' + e.by : ''].filter(Boolean).join(' — '); }
-    },
-    {
         key: 'tube', label: 'Tube feeding', emoji: '🍼', desc: 'Formula, volume and tolerance',
         sumField: 'volume',
         fields: [
@@ -479,16 +526,6 @@ var EXTRAS = [
         ],
         main: function (e, u) { return fmtNum(e.volume) + ' ' + u + (e.formula ? ' · ' + e.formula : ''); },
         sub:  function (e) { return [e.rate, e.tolerance ? 'tolerated: ' + e.tolerance : ''].filter(Boolean).join(' — '); }
-    },
-    {
-        key: 'toileting', label: 'Toileting & care', emoji: '🧻', desc: 'Changes, output and skin checks',
-        fields: [
-            { k: 'kind',   label: 'What',   type: 'select', options: ['Wet', 'BM', 'Wet + BM', 'Dry', 'Catheterised', 'Skin check'], required: true },
-            { k: 'detail', label: 'Detail', type: 'text' },
-            { k: 'by',     label: 'By',     type: 'text' }
-        ],
-        main: function (e) { return e.kind; },
-        sub:  function (e) { return [e.detail, e.by ? 'by ' + e.by : ''].filter(Boolean).join(' — '); }
     },
     {
         key: 'respiratory', label: 'Respiratory', emoji: '🫁', desc: 'Suction, oxygen and saturations',
@@ -575,7 +612,7 @@ var state = blankState();
 
 function defaultTemplate() {
     var on = {};
-    EXTRAS.forEach(function (x) { on[x.key] = false; });
+    EXTRAS.forEach(function (x) { on[x.key] = !!x.defaultOn; });
     return { title: 'Daily Hydration Log', blocks: DEFAULT_BLOCKS.map(function (b) { return Object.assign({}, b); }),
              unit: 'oz', goal: 0, extras: on };
 }
@@ -608,6 +645,28 @@ function dayTotal() {
 /* =========================================================================
    RENDER
    ========================================================================= */
+function foodOf(blockId) {
+    return state.entries.filter(function (e) { return e.section === 'food' && e.block === blockId; })
+        .sort(function (a, b) { return (a.time || '').localeCompare(b.time || ''); });
+}
+function foodRows(blockId) {
+    var list = foodOf(blockId);
+    if (!list.length) return '<div class="food-empty">Nothing logged yet.</div>';
+    return list.map(function (e) {
+        var sub = foodSub(e);
+        return '<div class="food-row">' +
+            '<div class="food-body">' +
+                '<div class="food-main">' + esc(foodMain(e)) + '</div>' +
+                (sub ? '<div class="food-sub">' + esc(sub) + '</div>' : '') +
+            '</div>' +
+            '<div class="entry-acts">' +
+                '<button type="button" class="icon-btn" data-fedit="' + esc(e.id) + '" data-fb="' + esc(blockId) + '">&#9998;</button>' +
+                '<button type="button" class="icon-btn danger" data-fdel="' + esc(e.id) + '">&times;</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
 function renderBlocks() {
     var wrap = $('blocks');
     wrap.innerHTML = '';
@@ -649,14 +708,14 @@ function renderBlocks() {
                 '</div>' +
                 '<div>' +
                     '<label class="lbl">Meals / snacks</label>' +
-                    '<textarea class="field" data-m="' + esc(b.id) + '" placeholder="What was offered and eaten"></textarea>' +
+                    '<div class="foodlist">' + foodRows(b.id) + '</div>' +
+                    '<button type="button" class="btn btn-add text-xs py-1 mt-1" data-food="' + esc(b.id) + '">&#43; Add food</button>' +
                 '</div>' +
                 '<div>' +
                     '<label class="lbl">Notes</label>' +
                     '<textarea class="field" data-n="' + esc(b.id) + '" placeholder="Anything worth passing on"></textarea>' +
                 '</div>' +
             '</div>';
-        el.querySelector('[data-m]').value = d.meals || '';
         el.querySelector('[data-n]').value = d.notes || '';
         card.appendChild(el);
     });
@@ -664,12 +723,20 @@ function renderBlocks() {
     card.addEventListener('input', function (ev) {
         var w = ev.target.closest('[data-w]');
         if (w) { blockData(w.dataset.w).water = num(w.value); renderTotal(); queueSave(); return; }
-        var m = ev.target.closest('[data-m]');
-        if (m) { blockData(m.dataset.m).meals = m.value; queueSave(); return; }
         var n = ev.target.closest('[data-n]');
         if (n) { blockData(n.dataset.n).notes = n.value; queueSave(); }
     });
     card.addEventListener('click', function (ev) {
+        var add = ev.target.closest('[data-food]');
+        if (add) { openEntry('food', null, add.dataset.food); return; }
+        var fe = ev.target.closest('[data-fedit]');
+        if (fe) { openEntry('food', fe.dataset.fedit, fe.dataset.fb); return; }
+        var fd = ev.target.closest('[data-fdel]');
+        if (fd) {
+            state.entries = state.entries.filter(function (e) { return e.id !== fd.dataset.fdel; });
+            renderBlocks(); queueSave(); toast('Food entry removed.', 'msg-info');
+            return;
+        }
         var q = ev.target.closest('[data-v]');
         if (!q) return;
         var holder = q.closest('[data-q]');
@@ -721,9 +788,11 @@ function renderExtras() {
             var sum = list.reduce(function (a, e) { return a + num(e[sec.sumField]); }, 0);
             totTxt = fmtNum(sum) + ' ' + t.unit;
             totCls = sum > 0 ? 'total' : 'total none';
+        } else if (!list.length) {
+            totTxt = 'none'; totCls = 'total none';
         } else {
-            totTxt = list.length ? list.length + ' logged' : 'none';
-            totCls = list.length ? 'total' : 'total none';
+            totTxt = sec.summary ? sec.summary(list) : list.length + ' logged';
+            totCls = 'total';
         }
 
         var rows = list.length ? list.map(function (e) {
@@ -800,7 +869,7 @@ function applyState() {
 function isEmpty(s) {
     var anyBlock = Object.keys(s.blocks).some(function (k) {
         var b = s.blocks[k];
-        return num(b.water) > 0 || (b.meals || '').trim() || (b.notes || '').trim();
+        return num(b.water) > 0 || (b.notes || '').trim();
     });
     return !anyBlock && !s.entries.length && !s.notes.trim();
 }
@@ -966,16 +1035,18 @@ $('template-save').addEventListener('click', function () {
 });
 
 /* ---------------- timed entry form ---------------- */
-var editingSection = null, editingId = null;
-function openEntry(secKey, id) {
-    var sec = EXTRA_BY_KEY[secKey];
+var editingSection = null, editingId = null, editingBlock = null;
+function fieldsFor(secKey) { return secKey === 'food' ? FOOD_FIELDS : EXTRA_BY_KEY[secKey].fields; }
+
+function openEntry(secKey, id, blockId) {
     var unit = templateFor(state.name).unit;
-    editingSection = secKey; editingId = id;
+    var label = secKey === 'food' ? 'food' : EXTRA_BY_KEY[secKey].label.toLowerCase();
+    editingSection = secKey; editingId = id; editingBlock = blockId || null;
     var ex = id ? state.entries.filter(function (e) { return e.id === id; })[0] : null;
 
-    $('entry-title').textContent = (ex ? 'Edit ' : 'Add ') + sec.label.toLowerCase();
+    $('entry-title').textContent = (ex ? 'Edit ' : 'Add ') + label;
     $('entry-time').value = ex ? ex.time : nowHM();
-    $('entry-fields').innerHTML = sec.fields.map(function (f) {
+    $('entry-fields').innerHTML = fieldsFor(secKey).map(function (f) {
         var val = ex ? (ex[f.k] === undefined ? '' : ex[f.k]) : '';
         var h = '<div class="mb-3"><label class="lbl">' + esc(f.label) + (f.unit ? ' (' + esc(unit) + ')' : '') + (f.required ? ' *' : '') + '</label>';
         if (f.type === 'select') {
@@ -995,11 +1066,11 @@ function openEntry(secKey, id) {
     openModal('entry-modal');
 }
 $('entry-save').addEventListener('click', function () {
-    var sec = EXTRA_BY_KEY[editingSection];
     var rec = { id: editingId || ('e' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36)),
                 section: editingSection, time: $('entry-time').value || nowHM() };
+    if (editingSection === 'food') rec.block = editingBlock;
     var missing = null;
-    sec.fields.forEach(function (f) {
+    fieldsFor(editingSection).forEach(function (f) {
         var el = $('entry-fields').querySelector('[data-f="' + f.k + '"]');
         var v = el ? el.value.trim() : '';
         if (f.required && !v && !missing) missing = f.label;
@@ -1009,7 +1080,7 @@ $('entry-save').addEventListener('click', function () {
     if (editingId) state.entries = state.entries.map(function (e) { return e.id === editingId ? rec : e; });
     else state.entries.push(rec);
     closeModal('entry-modal');
-    renderExtras();
+    if (editingSection === 'food') renderBlocks(); else renderExtras();
     queueSave();
 });
 
@@ -1097,7 +1168,10 @@ function dayAsText() {
         var d = state.blocks[b.id] || {};
         out += '\n' + b.label + ' (' + fmtTime(b.from) + '–' + fmtTime(b.to) + '): ' +
                fmtNum(d.water) + ' ' + t.unit + ' water\n';
-        if ((d.meals || '').trim()) out += '  Meals/snacks: ' + d.meals.trim() + '\n';
+        foodOf(b.id).forEach(function (e) {
+            var sub = foodSub(e);
+            out += '  ' + foodMain(e) + (sub ? ' (' + sub + ')' : '') + '\n';
+        });
         if ((d.notes || '').trim()) out += '  Notes: ' + d.notes.trim() + '\n';
     });
     out += '\nDaily total: ' + fmtNum(dayTotal()) + ' ' + t.unit + (t.goal > 0 ? ' (goal ' + fmtNum(t.goal) + ')' : '') + '\n';
@@ -1171,7 +1245,12 @@ function docHTML() {
     var rows = t.blocks.map(function (b) {
         var d = state.blocks[b.id] || {};
         var tint = b.tint === 'afternoon' ? '#e8eef5' : '#fdeef0';
-        var meals = (d.meals || '').trim();
+        var food = foodOf(b.id);
+        var meals = food.map(function (e) {
+            var sub = foodSub(e);
+            return '<div class="f-meal"><b>' + esc(foodMain(e)) + '</b>' +
+                   (sub ? '<div class="f-mealsub">' + esc(sub) + '</div>' : '') + '</div>';
+        }).join('');
         var notes = (d.notes || '').trim();
         return '<tr>' +
             '<td class="f-when" style="background:' + tint + '">' +
@@ -1180,7 +1259,7 @@ function docHTML() {
                 '<div class="hr">' + esc(fmtTime(b.from)) + '<br>&ndash; ' + esc(fmtTime(b.to)) + '</div>' +
             '</td>' +
             '<td class="f-water">' + esc(fmtNum(d.water)) + ' <span class="u">' + esc(t.unit) + '</span></td>' +
-            '<td class="f-cell">' + (meals ? esc(meals) : '<span class="f-dim">—</span>') + '</td>' +
+            '<td class="f-cell">' + (meals || '<span class="f-dim">—</span>') + '</td>' +
             '<td class="f-cell">' + (notes ? esc(notes) : '<span class="f-dim">—</span>') + '</td>' +
         '</tr>';
     }).join('');
@@ -1188,7 +1267,11 @@ function docHTML() {
     var extraBlocks = activeExtras().map(function (sec) {
         var list = entriesOf(sec.key);
         if (!list.length) return '';
-        return '<div class="f-sec"><h2>' + esc(sec.label) + '</h2><table><tbody>' +
+        var sum = sec.sumField
+            ? fmtNum(list.reduce(function (a, e) { return a + num(e[sec.sumField]); }, 0)) + ' ' + t.unit
+            : (sec.summary ? sec.summary(list) : list.length + ' logged');
+        return '<div class="f-sec"><h2>' + esc(sec.label) +
+               '<span class="f-sum">' + esc(sum) + '</span></h2><table><tbody>' +
             list.map(function (e) {
                 var sub = (sec.sub(e, t.unit) || '').trim();
                 return '<tr><td class="t">' + esc(fmtTime(e.time)) + '</td>' +
